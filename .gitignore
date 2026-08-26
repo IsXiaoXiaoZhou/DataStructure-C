@@ -1,0 +1,13 @@
+# 编译产物
+*.o
+*.obj
+*.exe
+demo.exe
+
+# IDE / 构建工具
+build/
+.vscode/
+.idea/
+
+# 本地工具 / agent 计划文件（不入库）
+.zcode/
