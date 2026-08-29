@@ -19,11 +19,23 @@ export function countingSortSteps(input: number[]): Step[] {
   for (let v = 0; v < K; v++) {
     for (const _ of buckets[v]) {
       out.push(v)
-      steps.push(frame([...out, ...a.slice(out.length)], `桶 ${v} 收集 → out[${out.length - 1}] = ${v}`, [out.length - 1, out.length - 1], range(0, out.length)))
+      steps.push(frame([...out, ...remainingOf(a, out)], `桶 ${v} 收集 → out[${out.length - 1}] = ${v}`, [out.length - 1, out.length - 1], range(0, out.length)))
     }
   }
   steps.push({ state: { array: out, buckets: buckets.map(b => [...b]), bucketLabels }, highlights: out.map((_, k) => k), active: null, narration: `排序完成：[${out.join(', ')}]` })
   return steps
+}
+
+function remainingOf(a: number[], out: number[]): number[] {
+  const need = new Map<number, number>()
+  for (const v of out) need.set(v, (need.get(v) || 0) + 1)
+  const rem: number[] = []
+  for (const v of a) {
+    const k = need.get(v) || 0
+    if (k > 0) need.set(v, k - 1)  // 这个 v 已被收进出 out
+    else rem.push(v)
+  }
+  return rem
 }
 
 function range(lo: number, hi: number): number[] {

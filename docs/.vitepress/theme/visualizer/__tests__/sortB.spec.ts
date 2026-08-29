@@ -45,6 +45,17 @@ describe('counting（值域 0~9，桶形态）', () => {
     countingSortSteps(input)
     expect(input).toEqual([3, 1, 2])
   })
+  it('收集帧 array 恒为输入的置换（[9,0] 与 [3,1,4,1,5]）', () => {
+    const sorted = (xs: number[]) => [...xs].sort((m, n) => m - n)
+    for (const input of [[9, 0], [3, 1, 4, 1, 5]] as number[][]) {
+      const steps = countingSortSteps(input)
+      const target = sorted(input)
+      for (const s of steps.filter(s => s.narration.includes('收集 →'))) {
+        expect(sorted((s.state as any).array)).toEqual(target)
+      }
+      expect(sorted((steps[steps.length - 1].state as any).array)).toEqual(target)
+    }
+  })
 })
 
 describe('radix（值域 0~99，LSD 十位分桶）', () => {
