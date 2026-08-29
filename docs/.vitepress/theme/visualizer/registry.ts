@@ -28,6 +28,9 @@ const sortDef = (title: string, steps: (a: number[]) => any, defaultInput: strin
 const bucketSortDef = (title: string, steps: (a: number[]) => any, defaultInput: string): VisualizerDef => ({
   title, renderer: 'arrayBar', steps, defaultInput, ...numberList(0, 99, 20)
 })
+const countingDef = (title: string, steps: (a: number[]) => any, defaultInput: string): VisualizerDef => ({
+  title, renderer: 'arrayBar', steps, defaultInput, ...numberList(0, 9, 20)
+})
 
 export const registry: Record<string, VisualizerDef> = {
   'insertion-sort': sortDef('插入排序', insertionSortSteps, '5,2,9,1,7'),
@@ -37,6 +40,6 @@ export const registry: Record<string, VisualizerDef> = {
   'selection-sort': sortDef('简单选择排序', selectionSortSteps, '5,2,9,1,7'),
   'heap-sort': sortDef('堆排序', heapSortSteps, '5,2,9,1,7,3'),
   'merge-sort': sortDef('归并排序', mergeSortSteps, '5,2,9,1,7,3'),
-  'counting-sort': bucketSortDef('计数排序（值域 0~9）', countingSortSteps, '3,1,4,1,5'),
+  'counting-sort': countingDef('计数排序（值域 0~9）', countingSortSteps, '3,1,4,1,5'),
   'radix-sort': bucketSortDef('基数排序（LSD，值域 0~99）', radixSortSteps, '42,7,91,7,30')
 }
