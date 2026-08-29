@@ -20,7 +20,7 @@ export function bubbleSortSteps(input: number[]): Step[] {
       steps.push({ state: [...a], highlights: done(), active: null, narration: '本轮无交换，已整体有序，提前结束' })
       break
     }
-    steps.push({ state: [...a], highlights: range(n - 1 - i, n), active: null, narration: `第 ${i + 1} 轮结束，最大值冒泡到位（尾部 ${i + 1} 个已有序）` })
+    steps.push({ state: [...a], highlights: i === n - 2 ? done() : range(n - 1 - i, n), active: null, narration: `第 ${i + 1} 轮结束，最大值冒泡到位（尾部 ${i + 1} 个已有序）` })
   }
   steps.push({ state: [...a], highlights: done(), active: null, narration: `排序完成：[${a.join(', ')}]` })
   return steps

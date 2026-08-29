@@ -29,7 +29,7 @@ export function quickSortSteps(input: number[]): Step[] {
       ;[a[i], a[hi]] = [a[hi], a[i]]
       steps.push({ state: [...a], highlights: [...range(lo, i), i, ...range(i + 1, hi + 1)], active: [i, hi], narration: `pivot 归位到 a[${i}] → [${a.join(', ')}]` })
     }
-    steps.push({ state: [...a], highlights: [...range(lo, i), i, ...range(i + 1, hi + 1)], active: null, narration: `pivot ${pivot} 就位：左 [${lo}, ${i - 1}]，右 [${i + 1}, ${hi}] 入栈` })
+    steps.push({ state: [...a], highlights: [...range(lo, i), i, ...range(i + 1, hi + 1)], active: null, narration: `pivot ${pivot} 就位：左 ${i - 1 >= lo ? `[${lo}, ${i - 1}]` : "空"}，右 ${i + 1 <= hi ? `[${i + 1}, ${hi}]` : "空"} 入栈` })
     stack.push([lo, i - 1], [i + 1, hi])
   }
   steps.push({ state: [...a], highlights: a.map((_, k) => k), active: null, narration: `排序完成：[${a.join(', ')}]` })

@@ -32,10 +32,20 @@ describe('genSidebar', () => {
     expect(sb[0].items!.some(i => i.text === 'index')).toBe(false)
   })
   it('未来新增分类目录自动收录', () => {
-    fs.mkdirSync(path.join(tmp, '10_新分类'), { recursive: true })
-    fs.writeFileSync(path.join(tmp, '10_新分类', '01_新模块.md'), '')
-    const sb = genSidebar(tmp)
-    expect(sb).toHaveLength(3)
-    expect(sb[2].text).toBe('10 新分类')
+    const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'sb-future-'))
+    try {
+      for (const cat of ['01_线性表', '09_排序']) {
+        fs.mkdirSync(path.join(tmp2, cat), { recursive: true })
+        fs.writeFileSync(path.join(tmp2, cat, 'index.md'), '')
+        fs.writeFileSync(path.join(tmp2, cat, '01_旧模块.md'), '')
+      }
+      fs.mkdirSync(path.join(tmp2, '10_新分类'), { recursive: true })
+      fs.writeFileSync(path.join(tmp2, '10_新分类', '01_新模块.md'), '')
+      const sb = genSidebar(tmp2)
+      expect(sb).toHaveLength(3)
+      expect(sb[2].text).toBe('10 新分类')
+    } finally {
+      fs.rmSync(tmp2, { recursive: true, force: true })
+    }
   })
 })

@@ -8,8 +8,9 @@ export interface SidebarItem {
 }
 
 export function genSidebar(docsDir: string): SidebarItem[] {
-  const categories = fs.readdirSync(docsDir)
-    .filter(name => /^\d{2}_/.test(name) && fs.statSync(path.join(docsDir, name)).isDirectory())
+  const categories = fs.readdirSync(docsDir, { withFileTypes: true })
+    .filter(e => /^\d{2}_/.test(e.name) && e.isDirectory())
+    .map(e => e.name)
     .sort()
   return categories.map(cat => {
     const pages = fs.readdirSync(path.join(docsDir, cat), { withFileTypes: true })

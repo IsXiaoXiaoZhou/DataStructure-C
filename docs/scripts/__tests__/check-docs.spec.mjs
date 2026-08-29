@@ -36,4 +36,12 @@ describe('collectIssues', () => {
     expect(issues.some(s => s.includes('a.h'))).toBe(false)
     expect(issues.some(s => s.includes('01_静态顺序表') && s.includes('缺少'))).toBe(false)
   })
+  it('docs/ 下非模块页（如 guide）的嵌码也纳入扫描', () => {
+    fs.mkdirSync(path.join(docs, 'guide'), { recursive: true })
+    fs.writeFileSync(path.join(docs, 'guide', 'snippet.txt'), 'demo')
+    fs.writeFileSync(path.join(docs, 'guide', '某.md'), '<<< ./snippet.txt\n<<< ./不存在.txt\n')
+    const issues = collectIssues(repo, docs)
+    expect(issues.some(s => s.includes('guide/某.md') && s.includes('不存在.txt'))).toBe(true)
+    expect(issues.some(s => s.includes('snippet.txt'))).toBe(false)
+  })
 })

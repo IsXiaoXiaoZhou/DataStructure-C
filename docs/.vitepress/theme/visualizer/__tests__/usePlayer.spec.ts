@@ -1,6 +1,6 @@
 // docs/.vitepress/theme/visualizer/__tests__/usePlayer.spec.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { usePlayer } from '../usePlayer'
 import type { Step } from '../types'
 

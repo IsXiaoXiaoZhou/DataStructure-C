@@ -11,7 +11,7 @@ export function shellSortSteps(input: number[]): Step[] {
       const key = a[i]
       let j = i - gap
       while (j >= 0 && a[j] > key) {
-        steps.push({ state: [...a], highlights: [], active: [j, j + gap], narration: `gap=${gap}：比较 a[${j}]=${a[j]} 与 key=a[${i}]=${key}，a[${j}] 后移` })
+        steps.push({ state: [...a], highlights: [], active: [j, j + gap], narration: `gap=${gap}：比较 a[${j}]=${a[j]} 与 key=${key}，a[${j}] 后移` })
         a[j + gap] = a[j]
         j -= gap
       }

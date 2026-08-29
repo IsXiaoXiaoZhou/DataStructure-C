@@ -26,7 +26,7 @@ export function usePlayer(steps: Ref<Step[]>) {
   function toggle() { playing.value ? pause() : play() }
   function next() { if (index.value < steps.value.length - 1) index.value++; else pause() }
   function prev() { if (index.value > 0) index.value-- }
-  function seek(i: number) { index.value = Math.min(Math.max(0, i), steps.value.length - 1) }
+  function seek(i: number) { index.value = steps.value.length === 0 ? 0 : Math.min(Math.max(0, i), steps.value.length - 1) }
   function setSpeed(ms: number) {
     speed.value = ms
     if (playing.value) { stopTimer(); timer = setInterval(() => {

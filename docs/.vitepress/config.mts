@@ -14,7 +14,8 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/' },
       { text: '学习路线', link: '/guide/learning-path' },
-      { text: '工程规范', link: '/guide/conventions' }
+      { text: '工程规范', link: '/guide/conventions' },
+      { text: '动画示例', link: '/guide/visualizer-demo' }
     ],
     sidebar: genSidebar(fileURLToPath(new URL('../', import.meta.url))),
     search: { provider: 'local' },
