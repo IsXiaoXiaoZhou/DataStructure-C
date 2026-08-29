@@ -7,6 +7,10 @@ const docsDir = path.join(repoRoot, 'docs')
 
 export function buildModulePage({ category, module: mod, headers, sources }) {
   const embed = files => files.map(f => `<<< @/../${category}/${mod}/${f}`).join('\n\n')
+  const isMain = f => f === 'main.c' || f.endsWith('/main.c')
+  const interfaceBlock = headers.length
+    ? embed(headers)
+    : '本模块为算法应用集合（多个独立算法文件），无统一接口头文件，直接阅读下方实现源码'
   return `---
 outline: deep
 ---
@@ -31,15 +35,15 @@ outline: deep
 
 ### 接口
 
-${embed(headers)}
+${interfaceBlock}
 
 ### 实现
 
-${embed(sources.filter(f => f !== 'main.c'))}
+${embed(sources.filter(f => !isMain(f)))}
 
 ### 运行与测试（main.c 内置断言）
 
-${embed(sources.filter(f => f === 'main.c'))}
+${embed(sources.filter(isMain))}
 
 ## 动画演示
 
@@ -58,6 +62,20 @@ gcc -Wall -Wextra -std=c99 *.c -o demo.exe && ./demo.exe
 `
 }
 
+function collectNestedC(dir) {
+  // 应用集合模块：算法在子目录中（每个子算法 X.c/X.h/main.c）；页面接口节降级为说明文字，实现/运行节嵌全部 .c
+  const out = []
+  const walk = d => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      const p = path.join(d, e.name)
+      if (e.isDirectory()) walk(p)
+      else if (e.name.endsWith('.c')) out.push(path.relative(dir, p).split(path.sep).join('/'))
+    }
+  }
+  walk(dir)
+  return out
+}
+
 function main() {
   let created = 0, skipped = 0
   for (const category of fs.readdirSync(repoRoot).filter(d => /^\d{2}_/.test(d) && fs.statSync(path.join(repoRoot, d)).isDirectory()).sort()) {
@@ -65,10 +83,10 @@ function main() {
     const indexMd = path.join(docsDir, category, 'index.md')
     if (!fs.existsSync(indexMd)) fs.writeFileSync(indexMd, `# ${category}\n\n<!-- 分类概述待撰写（Task 5） -->\n`)
     for (const mod of fs.readdirSync(path.join(repoRoot, category)).filter(d => /^\d{2}_/.test(d) && fs.statSync(path.join(repoRoot, category, d)).isDirectory()).sort()) {
-      const files = fs.readdirSync(path.join(repoRoot, category, mod)).filter(f => f.endsWith('.c') || f.endsWith('.h'))
-      const headers = files.filter(f => f.endsWith('.h'))
-      const sources = files.filter(f => f.endsWith('.c'))
-      if (!headers.length) { console.warn(`跳过（无 .h）：${category}/${mod}`); continue }
+      const modDir = path.join(repoRoot, category, mod)
+      const topFiles = fs.readdirSync(modDir).filter(f => f.endsWith('.c') || f.endsWith('.h'))
+      const headers = topFiles.filter(f => f.endsWith('.h'))
+      const sources = topFiles.length ? topFiles.filter(f => f.endsWith('.c')) : collectNestedC(modDir)
       const target = path.join(docsDir, category, `${mod}.md`)
       if (fs.existsSync(target)) { skipped++; continue } // 已存在（手写或旧骨架）绝不覆盖
       fs.writeFileSync(target, buildModulePage({ category, module: mod, headers, sources }))

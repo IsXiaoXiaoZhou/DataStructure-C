@@ -29,3 +29,20 @@ describe('buildModulePage', () => {
     expect(buildModulePage(mod)).toContain('cd 01_线性表/01_静态顺序表')
   })
 })
+
+const appMod = {
+  category: '02_栈',
+  module: '04_栈的应用',
+  headers: [],
+  sources: ['01_括号匹配/bracket_match.c', '01_括号匹配/main.c']
+}
+
+describe('buildModulePage 应用集合模块（headers 为空）', () => {
+  it('接口节为说明文字而非 .h 嵌码，全部 .c 照常嵌码', () => {
+    const md = buildModulePage(appMod)
+    expect(md).not.toMatch(/^<<< @\/\.\..*\.h$/m)
+    expect(md).toContain('本模块为算法应用集合（多个独立算法文件），无统一接口头文件，直接阅读下方实现源码')
+    expect(md).toContain('<<< @/../02_栈/04_栈的应用/01_括号匹配/bracket_match.c')
+    expect(md).toContain('<<< @/../02_栈/04_栈的应用/01_括号匹配/main.c')
+  })
+})
