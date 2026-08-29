@@ -93,7 +93,7 @@ DsResult hc_search(const HashChain *ht, int key, int *cmp)
         cur = cur->next;
     }
     if (cmp != NULL) *cmp = cnt;
-    return (DsResult){DS_ERROR, "未找到目标关键字"};
+    return (DsResult){DS_NOT_FOUND, "未找到目标关键字"};
 }
 
 DsResult hc_delete(HashChain *ht, int key)
@@ -120,7 +120,7 @@ DsResult hc_delete(HashChain *ht, int key)
         prev = cur;
         cur = cur->next;
     }
-    return (DsResult){DS_ERROR, "未找到目标关键字"};
+    return (DsResult){DS_NOT_FOUND, "未找到目标关键字"};
 }
 
 double hc_load_factor(const HashChain *ht)
@@ -166,6 +166,7 @@ const char *ds_status_str(DsStatus s)
         case DS_OUT_OF_RANGE: return "位置/下标越界";
         case DS_OVERFLOW:    return "内存分配失败";
         case DS_EMPTY:       return "散列表为空";
+        case DS_NOT_FOUND:   return "未找到目标关键字";
         default:             return "未知状态码";
     }
 }

@@ -124,7 +124,7 @@ DsResult ho_search(const HashOpen *ht, int key, int *cmp)
 
         if (ht->table[idx].state == HO_EMPTY) {
             if (cmp != NULL) *cmp = cnt;
-            return (DsResult){DS_ERROR, "未找到目标关键字"};
+            return (DsResult){DS_NOT_FOUND, "未找到目标关键字"};
         }
         if (ht->table[idx].state == HO_OCCUPIED) {
             cnt++;
@@ -135,7 +135,7 @@ DsResult ho_search(const HashOpen *ht, int key, int *cmp)
         }
     }
     if (cmp != NULL) *cmp = cnt;
-    return (DsResult){DS_ERROR, "未找到目标关键字"};
+    return (DsResult){DS_NOT_FOUND, "未找到目标关键字"};
 }
 
 DsResult ho_delete(HashOpen *ht, int key)
@@ -148,7 +148,7 @@ DsResult ho_delete(HashOpen *ht, int key)
         int idx = probe(ht, key, i);
 
         if (ht->table[idx].state == HO_EMPTY) {
-            return (DsResult){DS_ERROR, "未找到目标关键字"};
+            return (DsResult){DS_NOT_FOUND, "未找到目标关键字"};
         }
         if (ht->table[idx].state == HO_OCCUPIED && ht->table[idx].key == key) {
             ht->table[idx].state = HO_TOMBSTONE;
@@ -157,7 +157,7 @@ DsResult ho_delete(HashOpen *ht, int key)
             return (DsResult){DS_OK, "删除成功"};
         }
     }
-    return (DsResult){DS_ERROR, "未找到目标关键字"};
+    return (DsResult){DS_NOT_FOUND, "未找到目标关键字"};
 }
 
 double ho_load_factor(const HashOpen *ht)
@@ -193,6 +193,7 @@ const char *ds_status_str(DsStatus s)
         case DS_OUT_OF_RANGE: return "位置/下标越界";
         case DS_OVERFLOW:    return "散列表已满";
         case DS_EMPTY:       return "散列表为空";
+        case DS_NOT_FOUND:   return "未找到目标关键字";
         default:             return "未知状态码";
     }
 }

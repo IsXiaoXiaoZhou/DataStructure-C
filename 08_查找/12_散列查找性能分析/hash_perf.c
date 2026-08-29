@@ -284,6 +284,7 @@ const char *ds_status_str(DsStatus s)
         case DS_OUT_OF_RANGE: return "位置/下标越界";
         case DS_OVERFLOW:    return "内存分配失败";
         case DS_EMPTY:       return "参数为空";
+        case DS_NOT_FOUND:   return "查找未命中";
         default:             return "未知状态码";
     }
 }

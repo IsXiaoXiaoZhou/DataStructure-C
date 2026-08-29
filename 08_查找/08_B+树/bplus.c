@@ -234,7 +234,7 @@ DsResult bpt_search(BPTree t, int key)
     int i = 0;
 
     if (t == NULL) {
-        return (DsResult){DS_ERROR, "树为空"};
+        return (DsResult){DS_NOT_FOUND, "树为空"};
     }
     while (!x->leaf) {
         i = locate(x, key);
@@ -248,7 +248,7 @@ DsResult bpt_search(BPTree t, int key)
             return (DsResult){DS_OK, "查找成功"};
         }
     }
-    return (DsResult){DS_ERROR, "未找到目标关键字"};
+    return (DsResult){DS_NOT_FOUND, "未找到目标关键字"};
 }
 
 /* ========== 范围查询 ========== */
@@ -297,6 +297,7 @@ DsResult bpt_range(BPTree t, int lo, int hi, int *out, size_t cap, size_t *n)
 DsResult bpt_delete(BPTree *t, int key)
 {
     BPTNode *leaf = NULL;
+    BPTNode *bottom = NULL;     /* 删除路径最底端幸存结点(收缩/重导起点) */
     int i = 0;
     int j = 0;
 
@@ -304,7 +305,7 @@ DsResult bpt_delete(BPTree *t, int key)
         return (DsResult){DS_NULL_PTR, "树指针为空"};
     }
     if (*t == NULL) {
-        return (DsResult){DS_ERROR, "树为空"};
+        return (DsResult){DS_NOT_FOUND, "树为空"};
     }
     leaf = *t;
     while (!leaf->leaf) {
@@ -316,7 +317,7 @@ DsResult bpt_delete(BPTree *t, int key)
     }
     i = locate(leaf, key);
     if (i >= leaf->n || leaf->keys[i] != key) {
-        return (DsResult){DS_ERROR, "未找到目标关键字"};
+        return (DsResult){DS_NOT_FOUND, "未找到目标关键字"};
     }
     for (j = i; j < leaf->n - 1; ++j) {
         leaf->keys[j] = leaf->keys[j + 1];
@@ -383,14 +384,72 @@ DsResult bpt_delete(BPTree *t, int key)
                 }
                 p->n--;
                 free(leaf);
+                bottom = p;
                 if (p->n == 0 && p->parent == NULL) {
                     *t = p->ch[0];
                     if (*t != NULL) {
                         (*t)->parent = NULL;
                     }
                     free(p);
+                    bottom = *t;
                 }
             }
+        }
+    }
+    if (bottom == NULL) {
+        bottom = leaf;
+    }
+    /* 收缩 + 路由键重导: 自底向上沿删除路径单趟处理
+     * 1) 收缩: 删除不借不并, 内部结点键数可降至 0(仅剩 ch[0] 一个
+     *    孩子指针, 无路由键, 树高虚高)。此时用唯一孩子 ch[0] 原位
+     *    顶替该结点(父结点孩子指针直接改指孩子)并释放之: 子树内容
+     *    一键未变, 故父结点路由键所指"右子树最小键"不变, 无需调整;
+     *    顶替后孩子自身可能同为 0 键内部结点, 继续在同层级联收缩;
+     *    根结点退化则由唯一孩子取代, 树高减一。
+     * 2) 路由键重导: 每层重导父路由键 = 对应右子树当前最小键 ——
+     *    空叶摘除可能使祖先子树最小键变化(如被摘叶是其父子树的
+     *    最左叶时, 既有修正逻辑会跳过空叶而漏更祖父层) */
+    {
+        BPTNode *x = bottom;
+        while (x != NULL) {
+            BPTNode *p = x->parent;
+            if (!x->leaf && x->n == 0) {
+                BPTNode *c = x->ch[0];      /* 内部结点必有孩子 */
+                if (p == NULL) {
+                    *t = c;                 /* 根退化: 树高减一 */
+                    if (c != NULL) {
+                        c->parent = NULL;
+                    }
+                } else {
+                    int ci = 0;
+                    while (ci <= p->n && p->ch[ci] != x) {
+                        ++ci;
+                    }
+                    if (ci <= p->n) {
+                        p->ch[ci] = c;
+                        c->parent = p;
+                    }
+                }
+                free(x);
+                x = c;                      /* 孩子顶替后继续检查级联退化 */
+                continue;
+            }
+            if (p != NULL) {
+                int ci = 0;
+                while (ci <= p->n && p->ch[ci] != x) {
+                    ++ci;
+                }
+                if (ci > 0 && ci <= p->n) {
+                    BPTNode *m = p->ch[ci];
+                    while (m != NULL && !m->leaf) {
+                        m = m->ch[0];
+                    }
+                    if (m != NULL && m->n > 0) {
+                        p->keys[ci - 1] = m->keys[0];
+                    }
+                }
+            }
+            x = x->parent;
         }
     }
     return (DsResult){DS_OK, "删除成功"};
@@ -512,6 +571,7 @@ const char *ds_status_str(DsStatus s)
         case DS_OUT_OF_RANGE: return "位置/下标越界";
         case DS_OVERFLOW:    return "内存分配失败";
         case DS_EMPTY:       return "B+树为空";
+        case DS_NOT_FOUND:   return "未找到目标关键字";
         default:             return "未知状态码";
     }
 }

@@ -27,7 +27,8 @@ typedef enum {
     DS_NULL_PTR,
     DS_OUT_OF_RANGE,
     DS_OVERFLOW,
-    DS_EMPTY
+    DS_EMPTY,
+    DS_NOT_FOUND        // 查找未命中（业务正常结果，非异常）
 } DsStatus;
 
 /* 返回结果：状态码 + 可读描述 */

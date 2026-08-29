@@ -25,10 +25,10 @@ int main(void)
     assert(hc_insert(&ht, 10).code == DS_OK);
     assert(hc_insert(&ht, 10).code == DS_ERROR);  /* 重复 */
     assert(hc_search(&ht, 10, NULL).code == DS_OK);
-    assert(hc_search(&ht, 99, NULL).code == DS_ERROR);
+    assert(hc_search(&ht, 99, NULL).code == DS_NOT_FOUND);
     assert(hc_delete(&ht, 10).code == DS_OK);
-    assert(hc_delete(&ht, 10).code == DS_ERROR);  /* 已删 */
-    assert(hc_search(&ht, 10, NULL).code == DS_ERROR);
+    assert(hc_delete(&ht, 10).code == DS_NOT_FOUND);  /* 已删（键不存在） */
+    assert(hc_search(&ht, 10, NULL).code == DS_NOT_FOUND);
     assert(hc_size(&ht) == 0);
     assert(hc_destroy(&ht).code == DS_OK);
 
