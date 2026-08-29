@@ -11,3 +11,8 @@ build/
 
 # 本地工具 / agent 计划文件（不入库）
 .zcode/
+
+# 教程站（VitePress）
+node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
