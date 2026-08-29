@@ -3,6 +3,18 @@
 基于严蔚敏《数据结构（C语言版）》/王道教材体系，按 C 语言工程规范实现的
 65 个数据结构模块。每个模块完全独立、自包含，可单独编译运行。
 
+## 🖥️ 教程站点（本地预览）
+
+本项目配有 VitePress 教程站：65 个模块的讲解、源码展示与排序算法动画。
+
+```bash
+cd docs && npm install
+npm run docs:dev      # http://localhost:5173
+```
+
+其他命令：`cd docs && npm run docs:build`（构建静态产物）、`cd docs && npm run test`（动画步骤单测）、
+`cd docs && npm run check`（讲解页完整性检查）、`cd docs && npm run gen:pages`（为新模块生成骨架页）。
+
 ## 目录导航
 
 | 分类 | 模块 | 进入目录后编译 | 常用于（现实用途） |
