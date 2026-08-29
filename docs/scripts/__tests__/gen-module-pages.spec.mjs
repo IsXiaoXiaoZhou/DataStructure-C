@@ -33,16 +33,31 @@ describe('buildModulePage', () => {
 const appMod = {
   category: '02_栈',
   module: '04_栈的应用',
-  headers: [],
-  sources: ['01_括号匹配/bracket_match.c', '01_括号匹配/main.c']
+  headers: ['01_括号匹配/bracket_match.h', '02_表达式求值/expression_eval.h', '03_递归/recursion.h'],
+  sources: ['01_括号匹配/bracket_match.c', '01_括号匹配/main.c', '03_递归/recursion.c', '03_递归/main.c']
 }
 
-describe('buildModulePage 应用集合模块（headers 为空）', () => {
-  it('接口节为说明文字而非 .h 嵌码，全部 .c 照常嵌码', () => {
+describe('buildModulePage 应用集合模块（源码嵌套在子目录）', () => {
+  it('接口节按子目录分组嵌 .h，全部 .c 照常嵌码', () => {
     const md = buildModulePage(appMod)
-    expect(md).not.toMatch(/^<<< @\/\.\..*\.h$/m)
-    expect(md).toContain('本模块为算法应用集合（多个独立算法文件），无统一接口头文件，直接阅读下方实现源码')
+    expect(md).toContain('### 01_括号匹配\n\n<<< @/../02_栈/04_栈的应用/01_括号匹配/bracket_match.h')
+    expect(md).toContain('### 02_表达式求值\n\n<<< @/../02_栈/04_栈的应用/02_表达式求值/expression_eval.h')
+    expect(md).not.toContain('无统一接口头文件')
     expect(md).toContain('<<< @/../02_栈/04_栈的应用/01_括号匹配/bracket_match.c')
     expect(md).toContain('<<< @/../02_栈/04_栈的应用/01_括号匹配/main.c')
+  })
+  it('动手跑按子目录逐个编译，不再用顶层 *.c', () => {
+    const md = buildModulePage(appMod)
+    expect(md).toContain('cd 02_栈/04_栈的应用')
+    expect(md).toContain('gcc -Wall -Wextra -std=c99 01_括号匹配/*.c -o demo.exe && ./demo.exe')
+    expect(md).toContain('gcc -Wall -Wextra -std=c99 03_递归/*.c -o demo.exe && ./demo.exe')
+    expect(md).not.toContain('gcc -Wall -Wextra -std=c99 *.c')
+  })
+  it('复杂度表占位不引用未实现的 ComplexityTable 组件（扁平模块同样生效）', () => {
+    for (const m of [mod, appMod]) {
+      const md = buildModulePage(m)
+      expect(md).not.toContain('ComplexityTable')
+      expect(md).toContain('建议用 Markdown 表格呈现（操作 × 时间/空间复杂度）')
+    }
   })
 })

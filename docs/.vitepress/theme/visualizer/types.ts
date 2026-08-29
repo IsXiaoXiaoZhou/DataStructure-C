@@ -2,7 +2,8 @@
 export interface Step {
   state: unknown
   highlights: number[]
-  active: [number, number] | null
+  /** 单元素=单指针高亮，双元素=比较/交换对 */
+  active: number[] | null
   narration: string
 }
 
