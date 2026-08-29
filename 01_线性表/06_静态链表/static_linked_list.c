@@ -9,7 +9,7 @@
  *      数据链承载逻辑结构（模拟用户链表）；教材约定下标 0 作
  *      备用链头，cur==0 等价于指针世界的 NULL
  *   2. 分配/释放即备用链的摘除/归还，与 malloc/free 语义对齐
- * 复杂度: 按位查找 O(n)；插入/删除本身 O(1)（不含定位）
+ * 复杂度: 按位查找 O(n)；按值查找 O(n)；插入/删除本身 O(1)（不含定位）
  */
 
 #include <stdio.h>
@@ -189,6 +189,30 @@ DsResult list_get(const StaticLinkedList *list, size_t pos, int *value)
 
     *value = list->space[curr_index].data;
     return (DsResult){DS_OK, "取元素成功"};
+}
+
+DsResult list_find(const StaticLinkedList *list, int value, size_t *pos)
+{
+    int    curr_index = 0;
+    size_t rank = 0;
+
+    if (list == NULL || pos == NULL) {
+        return (DsResult){DS_NULL_PTR, "参数指针为空"};
+    }
+
+    /* 沿数据链顺序扫描，rank 即当前分量的位序（1-based） */
+    curr_index = list->space[SLL_HEAD_INDEX].cur;
+    while (curr_index != 0) {
+        rank++;
+        if (list->space[curr_index].data == value) {
+            *pos = rank;
+            return (DsResult){DS_OK, "查找成功"};
+        }
+        curr_index = list->space[curr_index].cur;
+    }
+
+    *pos = 0;
+    return (DsResult){DS_NOT_FOUND, "未找到目标元素"};
 }
 
 DsResult list_print(const StaticLinkedList *list)

@@ -40,7 +40,19 @@ static int probe(const HashOpen *ht, int key, int i)
     if (ht->strategy == HO_LINEAR) {
         return (h0 + i) % ht->m;
     }
-    return (h0 + i * i) % ht->m;
+    /* 教材二次探测: di = 1^2, -1^2, 2^2, -2^2, ...（交替正负）
+     * i=0 -> d=0; i=1,2 -> ±1; i=3,4 -> ±4; i=5,6 -> ±9 ...
+     * 负偏移按 (H + di) mod m 计算，结果为负时加 m 转正 */
+    {
+        int k = (i + 1) / 2;              /* 第 k 个平方项 */
+        int d = ((i % 2 == 1) ? 1 : -1) * k * k;
+        int idx = (h0 + d) % ht->m;
+
+        if (idx < 0) {
+            idx += ht->m;
+        }
+        return idx;
+    }
 }
 
 DsResult ho_init(HashOpen *ht, int m, HOStrategy strategy)

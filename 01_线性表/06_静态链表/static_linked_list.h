@@ -13,8 +13,8 @@
  *      结点的"地址"即数组下标，0 充当 NULL（备用链空标志）
  *   2. 定长数组实现且无隐藏不变量，按规范例外条款结构体
  *      直接暴露在头文件，教学上可观察两个链的存储布局
- * 复杂度: 按位查找 O(n)；插入/删除本身 O(1)（不含定位）；
- *         sll_malloc_node/sll_free_node 均 O(1)
+ * 复杂度: 按位查找 O(n)；按值查找 O(n)；插入/删除本身 O(1)
+ *         （不含定位）；sll_malloc_node/sll_free_node 均 O(1)
  */
 
 #include <stddef.h>
@@ -58,6 +58,16 @@ DsResult list_clear(StaticLinkedList *list);
 DsResult list_insert_at(StaticLinkedList *list, size_t pos, int value);
 DsResult list_remove_at(StaticLinkedList *list, size_t pos, int *value);
 DsResult list_get(const StaticLinkedList *list, size_t pos, int *value);
+
+/**
+ * @brief 按值查找（教材核心操作 LocateElem）: 返回首个匹配元素的位序
+ * @param list  静态链表指针
+ * @param value 目标值
+ * @param pos   出参，带回位序（从 1 开始；未找到时置 0），不可为 NULL
+ * @return DS_OK 找到; DS_NOT_FOUND 未找到; DS_NULL_PTR 参数为 NULL
+ * @note 沿数据链顺序扫描 O(n)
+ */
+DsResult list_find(const StaticLinkedList *list, int value, size_t *pos);
 DsResult list_print(const StaticLinkedList *list);
 
 /**

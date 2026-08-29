@@ -15,6 +15,7 @@
  * 设计要点:
  *   模块自带邻接矩阵（有向带权网）；Dijkstra 附带 prev 前驱数组
  *   支持路径重建；Floyd 附带 next 后继矩阵支持路径重建
+ * 复杂度: Dijkstra O(n^2)；Floyd O(n^3)
  */
 
 #include <stddef.h>

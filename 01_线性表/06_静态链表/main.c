@@ -2,7 +2,8 @@
  * @file main.c
  * @brief 静态链表（游标实现）断言测试与演示
  *
- * 覆盖点: 初始化 / 按位插删取 / 空表与越界 / 分量回收复用
+ * 覆盖点: 初始化 / 按位插删取 / 按值查找 LocateElem（首位/中部/
+ * 尾部命中、未命中、空表）/ 空表与越界 / 分量回收复用
  *（删除后再插入应优先复用刚归还的分量）/ 备用链耗尽溢出 /
  * destroy 栈对象复位语义 / clear 等价重新 init
  */
@@ -16,6 +17,7 @@ int main(void)
     StaticLinkedList list;
     int    value = 0;
     size_t i = 0;
+    size_t pos = 0;
 
     printf("===== 静态链表（游标实现） =====\n");
 
@@ -29,11 +31,16 @@ int main(void)
     assert(list_remove_at(NULL, 1, &value).code == DS_NULL_PTR);
     assert(list_get(NULL, 1, &value).code == DS_NULL_PTR);
     assert(list_get(&list, 1, NULL).code == DS_NULL_PTR);
+    assert(list_find(NULL, 1, &pos).code == DS_NULL_PTR);
+    assert(list_find(&list, 1, NULL).code == DS_NULL_PTR);
     assert(list_print(NULL).code == DS_NULL_PTR);
 
     /* 用例3: 空表上删/取应返回 DS_EMPTY */
     assert(list_remove_at(&list, 1, &value).code == DS_EMPTY);
     assert(list_get(&list, 1, &value).code == DS_EMPTY);
+
+    /* 用例3b: 空表按值查找应未命中（位序置 0） */
+    assert(list_find(&list, 10, &pos).code == DS_NOT_FOUND && pos == 0);
 
     /* 用例4: 依次插入 1..5，位置顺序即值顺序 */
     for (i = 1; i <= 5; i++) {
@@ -44,6 +51,12 @@ int main(void)
         assert(list_get(&list, i, &value).code == DS_OK);
         assert(value == (int)(i * 10));
     }
+
+    /* 用例4b: 按值查找 LocateElem —— 命中首位/中部/尾部与未命中 */
+    assert(list_find(&list, 10, &pos).code == DS_OK && pos == 1);
+    assert(list_find(&list, 30, &pos).code == DS_OK && pos == 3);
+    assert(list_find(&list, 50, &pos).code == DS_OK && pos == 5);
+    assert(list_find(&list, 999, &pos).code == DS_NOT_FOUND && pos == 0);
 
     /* 用例5: 中间位置插入与删除（游标链接正确性） */
     assert(list_insert_at(&list, 3, 25).code == DS_OK);   /* 10 20 25 30 40 50 */

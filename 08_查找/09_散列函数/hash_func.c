@@ -39,11 +39,16 @@ static int digit_at(int key, int d)
 
 /* ========== 五种散列函数 ========== */
 
+/*
+ * 直接定址法: H(key) = key（恒等映射，教材亦推广为 a·key + b）
+ * 适用场景: 关键字集合小且连续（如 0..m-1），此时一对一映射零冲突；
+ * 表长 m 需覆盖关键字取值范围，函数内不做 % m 压缩，
+ * 调用方直接以 key 作为桶号（m 仅为统一签名保留）
+ */
 int hf_direct(int key, int m)
 {
-    int h = key % m;
-    if (h < 0) h += m;
-    return h;
+    (void)m; /* 恒等映射无需表长，参数仅为匹配 HashFunc 签名 */
+    return key;
 }
 
 int hf_division(int key, int m)

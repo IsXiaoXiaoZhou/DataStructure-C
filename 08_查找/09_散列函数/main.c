@@ -14,11 +14,12 @@ enum { N_KEYS = 1000, TABLE_LEN = 97, BUCKET_CAP = 128 };
 
 typedef int (*HF)(int, int);
 
+/* 压缩型散列函数（直接定址为恒等映射，不参与 %m 压缩型均匀性统计） */
 static const HF funcs[] = {
-    hf_direct, hf_division, hf_digit_analysis, hf_mid_square, hf_folding
+    hf_division, hf_digit_analysis, hf_mid_square, hf_folding
 };
 static const char *names[] = {
-    "直接定址", "除留余数", "数字分析", "平方取中", "折叠法"
+    "除留余数", "数字分析", "平方取中", "折叠法"
 };
 
 static void print_histogram(const int buckets[], int m, const char *name, double chi2)
@@ -45,7 +46,31 @@ int main(void)
 
     printf("===== 散列函数（五法集合 + 分布均匀性） =====\n");
 
-    assert(hf_direct(0, 1) == 0);
+    /* 直接定址法 H(key)=key: 恒等映射断言（桶号即关键字本身） */
+    assert(hf_direct(0, 10) == 0);
+    assert(hf_direct(7, 10) == 7);
+    assert(hf_direct(9, 10) == 9);
+    {
+        /* 关键字集合 0..9 小且连续，恰好覆盖表长 10:
+         * 每桶恰 1 个关键字，零冲突，卡方统计应为 0 */
+        int small_keys[10];
+        int b[10] = {0};
+        double chi2 = 0.0;
+        size_t k = 0;
+
+        for (k = 0; k < 10; ++k) {
+            small_keys[k] = (int)k;
+            assert(hf_direct(small_keys[k], 10) == (int)k);
+        }
+        assert(hf_distribution(hf_direct, small_keys, 10, 10, b, &chi2).code
+               == DS_OK);
+        for (k = 0; k < 10; ++k) {
+            assert(b[k] == 1);
+        }
+        printf("直接定址 0..9 -> 表长10: 每桶恰1个, 卡方=%.1f (零冲突)\n",
+               chi2);
+    }
+
     assert(hf_division(0, 1) == 0);
 
     for (i = 0; i < N_KEYS; ++i) {
