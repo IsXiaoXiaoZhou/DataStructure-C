@@ -15,7 +15,7 @@
 - 环境约定：Windows + Git Bash；Node ≥ 18（本机 v24.18.0）、npm 11.16.0
 - 依赖上限：仅 `vitepress`、`vue`、`vitest` 三个包 + vue 的 peer，不引入 `@vue/test-utils` 等其他运行/测试依赖（spec 明确）
 - **现有 `01_线性表/`~`09_排序/` 的 C 源码目录零改动**（任何任务都不得修改/移动/删除它们）
-- 嵌码一律优先用 VitePress 原生 `<<< ../分类/模块/文件.c` 语法（相对 md 文件）
+- 嵌码一律优先用 VitePress 原生 `<<< @/../分类/模块/文件.c` 语法（`@` = srcDir 即 docs/，`@/..` = 仓库根，深度无关；Task 2 已验证可行）
 - 动画输入上限：排序类长度 1~20、值 0~999；计数/基数排序值 0~99；非法输入即时校验提示（spec 错误处理节）
 - 站点全中文文案；界面语言 `lang: 'zh-CN'`
 - 每个任务结束单独 commit（feat/test/docs 前缀），不与他人改动混提
@@ -179,7 +179,7 @@ features:
 ```md
 # 嵌码试验
 
-<<< ../01_线性表/01_静态顺序表/static_seq_list.h
+<<< @/../01_线性表/01_静态顺序表/static_seq_list.h
 ```
 
 Run: `cd docs && npm run docs:build`
@@ -356,15 +356,16 @@ git commit -m "feat: 侧边栏自动生成（扫描分类目录，新分类自�
 
 ---
 
-### Task 4: 骨架页生成脚本（TDD）+ 全量生成 65 页
+### Task 4: 骨架页生成脚本（TDD）+ 全量生成 65 页 + .h 语言别名
 
 **Files:**
 - Create: `docs/scripts/gen-module-pages.mjs`
 - Create: `docs/scripts/__tests__/gen-module-pages.spec.mjs`
 - Create（生成产物）: `docs/01_线性表/01_静态顺序表.md` … 共 65 个模块页
+- Modify: `docs/.vitepress/config.mts`（加 markdown.languageAlias，让 .h 嵌码获得 C 着色）
 
 **Interfaces:**
-- Consumes: 仓库现有 `0X_分类/0Y_模块/{*.h,*.c,main.c}` 目录结构
+- Consumes: 仓库现有 `0X_分类/0Y_模块/{*.h,*.c,main.c}` 目录结构；Task 2 验证结论——`<<<` 可引用 srcDir 外文件、路径相对 md 所在目录，故统一用**深度无关写法 `<<< @/../分类/模块/文件`**（`@` = srcDir 即 docs/，`@/..` = 仓库根）
 - Produces: `cd docs && npm run gen:pages`；纯函数 `buildModulePage({ category, module, headers, sources })` 供脚本与测试共用（headers/sources 为模块目录下发现的文件名数组）
 
 - [ ] **Step 1: 写失败测试**
@@ -388,9 +389,9 @@ describe('buildModulePage', () => {
   })
   it('嵌码指令相对路径指向仓库源文件', () => {
     const md = buildModulePage(mod)
-    expect(md).toContain('<<< ../01_线性表/01_静态顺序表/static_seq_list.h')
-    expect(md).toContain('<<< ../01_线性表/01_静态顺序表/static_seq_list.c')
-    expect(md).toContain('<<< ../01_线性表/01_静态顺序表/main.c')
+    expect(md).toContain('<<< @/../01_线性表/01_静态顺序表/static_seq_list.h')
+    expect(md).toContain('<<< @/../01_线性表/01_静态顺序表/static_seq_list.c')
+    expect(md).toContain('<<< @/../01_线性表/01_静态顺序表/main.c')
   })
   it('含六大模板节与占位提示', () => {
     const md = buildModulePage(mod)
@@ -421,7 +422,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const docsDir = path.join(repoRoot, 'docs')
 
 export function buildModulePage({ category, module: mod, headers, sources }) {
-  const embed = files => files.map(f => `<<< ../${category}/${mod}/${f}`).join('\n\n')
+  const embed = files => files.map(f => `<<< @/../${category}/${mod}/${f}`).join('\n\n')
   return `---
 outline: deep
 ---
@@ -502,13 +503,27 @@ Run: `cd docs && npx vitest run scripts/__tests__/gen-module-pages.spec.mjs`
 Expected: PASS ×4。
 
 Run: `cd docs && npm run gen:pages && npm run docs:build`
-Expected: 输出"生成 65 页，跳过 0 页"；build 成功（dead links 检查通过，因为首页 features 与侧边栏引用的 `/0X_分类/` 尚无 index.md 会怎样——注意：`link: /01_线性表/` 对应 `docs/01_线性表/index.md`，脚本已生成占位 index.md，所以不产生死链）。
+Expected: 输出"生成 65 页，跳过 0 页"；build 成功（首页 features 与侧边栏引用的 `/0X_分类/` 对应占位 index.md 已由脚本生成，不产生死链）。
+
+- [ ] **Step 4b: .h 语言别名（Task 2 验证结论落地：shiki 不识别 .h 扩展名）**
+
+在 `docs/.vitepress/config.mts` 的 `defineConfig({...})` 内新增：
+
+```ts
+  markdown: {
+    languageAlias: { h: 'c' }
+  },
+```
+
+Run: `cd docs && npm run docs:build`
+Expected: 构建无 shiki "language h not found" 类告警；抽查 `docs/.vitepress/dist/01_线性表/01_静态顺序表.html` 中接口代码块为 `language-c` 着色（grep `class="language-c"` 有结果）。
+若 languageAlias 对 `<<<` 导入不生效（仍回退 txt）：改用 shiki 语言注册方式——在 config.mts 的 `markdown: { languages: [...] }` 配置不可行时，接受 .h 无着色并在报告中记 Minor（不阻塞，.c 文件着色正常即可）。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/scripts docs/01_线性表 docs/02_栈 docs/03_队列 docs/04_特殊矩阵压缩存储 docs/05_串 docs/06_树 docs/07_图 docs/08_查找 docs/09_排序
-git commit -m "feat: 骨架页生成脚本，全量生成 65 个模块页与分类占位页"
+git add docs/scripts docs/.vitepress/config.mts docs/01_线性表 docs/02_栈 docs/03_队列 docs/04_特殊矩阵压缩存储 docs/05_串 docs/06_树 docs/07_图 docs/08_查找 docs/09_排序
+git commit -m "feat: 骨架页生成脚本，全量生成 65 个模块页与分类占位页；.h 嵌码 C 着色"
 ```
 
 ---
@@ -655,7 +670,7 @@ beforeAll(() => {
   // docs：A 的 md 引用存在文件 + 不存在文件
   fs.mkdirSync(docs, { recursive: true })
   fs.writeFileSync(path.join(docs, '01_线性表', '01_静态顺序表.md'),
-    '<<< ../01_线性表/01_静态顺序表/a.h\n<<< ../01_线性表/01_静态顺序表/不存在.c\n')
+    '<<< @/../01_线性表/01_静态顺序表/a.h\n<<< @/../01_线性表/01_静态顺序表/不存在.c\n')
 })
 afterAll(() => { fs.rmSync(repo, { recursive: true, force: true }) })
 
@@ -700,7 +715,7 @@ export function collectIssues(repoRoot, docsDir) {
       if (!fs.existsSync(md)) { issues.push(`源模块 ${category}/${mod} 缺少讲解页 docs/${category}/${mod}.md`); continue }
       const text = fs.readFileSync(md, 'utf8')
       for (const m of text.matchAll(/^<<<\s+(\S+)$/gm)) {
-        const target = path.resolve(path.dirname(md), m[1])
+        const target = m[1].startsWith("@/") ? path.resolve(docsDir, m[1].slice(2)) : path.resolve(path.dirname(md), m[1])
         if (!fs.existsSync(target)) issues.push(`${category}/${mod}.md 引用不存在的源文件: ${m[1]}`)
       }
     }
