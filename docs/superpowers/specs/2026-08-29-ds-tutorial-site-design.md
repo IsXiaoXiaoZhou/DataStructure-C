@@ -57,8 +57,8 @@ DataStructure/
 │   ├── superpowers/specs/       # 设计文档（VitePress 用 srcExclude 排除）
 │   └── 01_线性表/
 │       ├── index.md             # 分类概述页
-│       └── 01_静态顺序表.md     # 模块页（讲解手写 + 嵌码指令 + 动画组件）
-└── package.json                 # scripts: docs:dev / docs:build / docs:preview / check
+│       ├── 01_静态顺序表.md     # 模块页（讲解手写 + 嵌码指令 + 动画组件）
+│   └── package.json             # npm 工程收在 docs/ 下：scripts: docs:dev / docs:build / docs:preview / check / gen:pages / test
 ```
 
 - 构建产物：`docs/.vitepress/dist`（纯静态，`docs:preview` 本地预览）
@@ -165,7 +165,7 @@ DataStructure/
 - **完整性检查脚本** `docs/scripts/check-docs.mjs`：
   ① 每个模块目录都有对应 `.md`（缺失列出清单）；
   ② 所有 `<<<` 引用的源文件路径存在。
-  本地 `npm run check` 可跑，将来可挂 CI
+  本地 `cd docs && npm run check` 可跑，将来可挂 CI
 - **动画正确性**：步骤生成器是纯函数，用 Vitest 对每个动画的步骤序列
   做断言（如排序动画最终帧必须有序、比较/交换次数与手算一致）
 - **Git 卫生**：忽略 cache/dist/node_modules（收编当前未提交的 .gitignore 改动）
@@ -191,11 +191,11 @@ DataStructure/
 
 ## 验收标准
 
-1. `npm run docs:dev` 本地启动，首页/学习路线/工程规范/9 分类概述页完整
+1. `cd docs && npm run docs:dev` 本地启动，首页/学习路线/工程规范/9 分类概述页完整
 2. 65 个模块页存在且骨架完整，嵌码正常渲染带高亮源码
 3. 侧边栏两级树与仓库目录一一对应
 4. 动画基建可用：PlayerShell + 6 类渲染器；V1 批次 9 种排序动画可播、
    可单步/调速/自定义输入，步骤生成器有 Vitest 断言
 5. 本地搜索、暗色模式、移动端可用
-6. `npm run check` 能正确报出缺失/路径错误清单
+6. `cd docs && npm run check` 能正确报出缺失/路径错误清单
 7. 现有 C 代码目录零改动

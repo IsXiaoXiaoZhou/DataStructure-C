@@ -19,21 +19,21 @@
 - 动画输入上限：排序类长度 1~20、值 0~999；计数/基数排序值 0~99；非法输入即时校验提示（spec 错误处理节）
 - 站点全中文文案；界面语言 `lang: 'zh-CN'`
 - 每个任务结束单独 commit（feat/test/docs 前缀），不与他人改动混提
-- 所有新文件放 `docs/` 下（spec：站点相关文件全部收在 docs/）
-- 仓库根只新增 `package.json` 与 `.gitignore` 修改两样东西
+- 所有新文件放 `docs/` 下（spec：站点相关文件全部收在 docs/，含 `package.json`）；**仓库根零新增文件**，仅修改 `.gitignore`
+- npm/npx/vitest 命令一律在 `docs/` 目录下执行（下文命令已带 `cd docs &&` 前缀）；git 命令在仓库根执行
 
 ---
 
 ### Task 1: 工程基建——package.json、依赖、.gitignore
 
 **Files:**
-- Create: `package.json`
+- Create: `docs/package.json`
 - Modify: `.gitignore`
 
 **Interfaces:**
-- Produces: npm scripts `docs:dev` / `docs:build` / `docs:preview` / `check` / `gen:pages` / `test`（后续所有任务的验证入口）
+- Produces: npm scripts `docs:dev` / `docs:build` / `docs:preview` / `check` / `gen:pages` / `test`（后续所有任务的验证入口；npm run 的 cwd 是 `docs/`，故 vitepress 的 srcDir 就是当前目录，脚本路径写 `scripts/...`）
 
-- [ ] **Step 1: 写 package.json**
+- [ ] **Step 1: 写 docs/package.json**
 
 ```json
 {
@@ -41,11 +41,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs",
-    "gen:pages": "node docs/scripts/gen-module-pages.mjs",
-    "check": "node docs/scripts/check-docs.mjs",
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview",
+    "gen:pages": "node scripts/gen-module-pages.mjs",
+    "check": "node scripts/check-docs.mjs",
     "test": "vitest run"
   }
 }
@@ -54,10 +54,10 @@
 - [ ] **Step 2: 安装依赖**
 
 ```bash
-npm install -D vitepress vue vitest
+cd docs && npm install -D vitepress vue vitest
 ```
 
-Expected: 安装成功，`node_modules/` 出现，`vitepress --version` 输出 1.x。
+Expected: 安装成功，`docs/node_modules/` 出现。
 
 - [ ] **Step 3: 更新 .gitignore**
 
@@ -71,13 +71,13 @@ docs/.vitepress/dist/
 
 - [ ] **Step 4: 验证**
 
-Run: `npx vitepress --version && node -e "console.log(require('./package.json').scripts)"`
-Expected: 版本号 1.x；scripts 五条齐全。
+Run: `cd docs && npx vitepress --version && node -e "console.log(Object.keys(require('./package.json').scripts))"`
+Expected: 版本号 1.x；scripts 六条齐全。
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add package.json package-lock.json .gitignore
+git add docs/package.json docs/package-lock.json .gitignore
 git commit -m "chore: 站点工程基建（VitePress + Vitest 依赖与脚本）"
 ```
 
@@ -182,7 +182,7 @@ features:
 <<< ../01_线性表/01_静态顺序表/static_seq_list.h
 ```
 
-Run: `npm run docs:build`
+Run: `cd docs && npm run docs:build`
 Expected: 构建成功。打开 `docs/.vitepress/dist/01_线性表/__sandbox__.html` 确认含 C 代码高亮内容。
 
 - [ ] **Step 3b（仅当 Step 3 失败）: 回退方案——markdown-it 自定义指令**
@@ -207,7 +207,7 @@ function codeInclude(md: any) {
 
 ```bash
 rm docs/01_线性表/__sandbox__.md
-npm run docs:build
+cd docs && npm run docs:build
 ```
 
 Expected: 构建成功且无残留页面。记录结论（Step 3 成功 / 走 3b）到 commit message。
@@ -279,7 +279,7 @@ describe('genSidebar', () => {
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `npx vitest run docs/.vitepress/__tests__/genSidebar.spec.ts`
+Run: `cd docs && npx vitest run .vitepress/__tests__/genSidebar.spec.ts`
 Expected: FAIL（genSidebar 模块不存在）。
 
 - [ ] **Step 3: 实现 genSidebar.ts**
@@ -314,7 +314,7 @@ export function genSidebar(docsDir: string): SidebarItem[] {
 
 - [ ] **Step 4: 跑测试确认通过**
 
-Run: `npx vitest run docs/.vitepress/__tests__/genSidebar.spec.ts`
+Run: `cd docs && npx vitest run .vitepress/__tests__/genSidebar.spec.ts`
 Expected: PASS ×3。
 
 - [ ] **Step 5: 接入 config.mts 并构建验证**
@@ -344,7 +344,7 @@ export default defineConfig({
 })
 ```
 
-Run: `npm run docs:build`
+Run: `cd docs && npm run docs:build`
 Expected: 构建成功（此时分类页还不存在，链接由 Task 5 补齐；build 不做未引用链接检查，能过即可）。
 
 - [ ] **Step 6: Commit**
@@ -365,7 +365,7 @@ git commit -m "feat: 侧边栏自动生成（扫描分类目录，新分类自�
 
 **Interfaces:**
 - Consumes: 仓库现有 `0X_分类/0Y_模块/{*.h,*.c,main.c}` 目录结构
-- Produces: `npm run gen:pages`；纯函数 `buildModulePage({ category, module, headers, sources })` 供脚本与测试共用（headers/sources 为模块目录下发现的文件名数组）
+- Produces: `cd docs && npm run gen:pages`；纯函数 `buildModulePage({ category, module, headers, sources })` 供脚本与测试共用（headers/sources 为模块目录下发现的文件名数组）
 
 - [ ] **Step 1: 写失败测试**
 
@@ -406,7 +406,7 @@ describe('buildModulePage', () => {
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `npx vitest run docs/scripts/__tests__/gen-module-pages.spec.mjs`
+Run: `cd docs && npx vitest run scripts/__tests__/gen-module-pages.spec.mjs`
 Expected: FAIL（模块不存在）。
 
 - [ ] **Step 3: 实现脚本**
@@ -417,7 +417,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const docsDir = path.join(repoRoot, 'docs')
 
 export function buildModulePage({ category, module: mod, headers, sources }) {
@@ -498,10 +498,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) main()
 
 - [ ] **Step 4: 跑测试确认通过，然后全量生成**
 
-Run: `npx vitest run docs/scripts/__tests__/gen-module-pages.spec.mjs`
+Run: `cd docs && npx vitest run scripts/__tests__/gen-module-pages.spec.mjs`
 Expected: PASS ×4。
 
-Run: `npm run gen:pages && npm run docs:build`
+Run: `cd docs && npm run gen:pages && npm run docs:build`
 Expected: 输出"生成 65 页，跳过 0 页"；build 成功（dead links 检查通过，因为首页 features 与侧边栏引用的 `/0X_分类/` 尚无 index.md 会怎样——注意：`link: /01_线性表/` 对应 `docs/01_线性表/index.md`，脚本已生成占位 index.md，所以不产生死链）。
 
 - [ ] **Step 5: Commit**
@@ -609,7 +609,7 @@ git commit -m "feat: 骨架页生成脚本，全量生成 65 个模块页与分�
 
 - [ ] **Step 4: 构建验证**
 
-Run: `npm run docs:build && npm run docs:preview`
+Run: `cd docs && npm run docs:build && npm run docs:preview`
 Expected: build 成功；浏览器打开预览地址，首页 9 张卡、侧边栏两级树、9 个分类页、2 个 guide 页全部可达，`/guide/learning-path` 与 nav 对应。
 
 - [ ] **Step 5: Commit**
@@ -630,7 +630,7 @@ git commit -m "docs: 学习路线、工程规范两页与 9 个分类概述页"
 
 **Interfaces:**
 - Consumes: Task 4 的目录约定（源模块目录 ↔ `docs/0X_*/0Y_模块.md` 一一对应）
-- Produces: `npm run check`；纯函数 `collectIssues(repoRoot, docsDir): string[]`（空数组 = 通过；脚本 main() 有问题时 `process.exit(1)`）
+- Produces: `cd docs && npm run check`；纯函数 `collectIssues(repoRoot, docsDir): string[]`（空数组 = 通过；脚本 main() 有问题时 `process.exit(1)`）
 
 - [ ] **Step 1: 写失败测试**
 
@@ -678,7 +678,7 @@ describe('collectIssues', () => {
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `npx vitest run docs/scripts/__tests__/check-docs.spec.mjs`
+Run: `cd docs && npx vitest run scripts/__tests__/check-docs.spec.mjs`
 Expected: FAIL。
 
 - [ ] **Step 3: 实现脚本**
@@ -689,7 +689,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const docsDir = path.join(repoRoot, 'docs')
 
 export function collectIssues(repoRoot, docsDir) {
@@ -719,7 +719,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) main()
 
 - [ ] **Step 4: 跑测试确认通过，再跑真实检查**
 
-Run: `npx vitest run docs/scripts/__tests__/check-docs.spec.mjs && npm run check`
+Run: `cd docs && npx vitest run scripts/__tests__/check-docs.spec.mjs && cd docs && npm run check`
 Expected: 测试 PASS ×3；真实检查通过（Task 4/5 完成后无缺页，嵌码路径全部有效）。
 
 - [ ] **Step 5: Commit**
@@ -837,7 +837,7 @@ describe('usePlayer', () => {
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `npx vitest run docs/.vitepress/theme/visualizer/__tests__/usePlayer.spec.ts`
+Run: `cd docs && npx vitest run .vitepress/theme/visualizer/__tests__/usePlayer.spec.ts`
 Expected: FAIL（usePlayer 不存在）。
 
 - [ ] **Step 3: 实现 types.ts + usePlayer.ts**
@@ -907,7 +907,7 @@ export function usePlayer(steps: Ref<Step[]>) {
 
 - [ ] **Step 4: 跑测试确认通过**
 
-Run: `npx vitest run docs/.vitepress/theme/visualizer/__tests__/usePlayer.spec.ts`
+Run: `cd docs && npx vitest run .vitepress/theme/visualizer/__tests__/usePlayer.spec.ts`
 Expected: PASS ×6。
 
 - [ ] **Step 5: Commit**
@@ -1006,7 +1006,7 @@ describe('quick 附加行为', () => {
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `npx vitest run docs/.vitepress/theme/visualizer/__tests__/sortA.spec.ts`
+Run: `cd docs && npx vitest run .vitepress/theme/visualizer/__tests__/sortA.spec.ts`
 Expected: FAIL（四个 steps 模块不存在）。
 
 - [ ] **Step 3: 实现四个生成器**
@@ -1155,7 +1155,7 @@ function range(lo: number, hi: number): number[] {
 
 - [ ] **Step 4: 跑测试确认通过**
 
-Run: `npx vitest run docs/.vitepress/theme/visualizer/__tests__/sortA.spec.ts`
+Run: `cd docs && npx vitest run .vitepress/theme/visualizer/__tests__/sortA.spec.ts`
 Expected: PASS（含 each 展开的全部用例）。
 
 - [ ] **Step 5: Commit**
@@ -1249,7 +1249,7 @@ describe('radix（值域 0~99，LSD 十位分桶）', () => {
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `npx vitest run docs/.vitepress/theme/visualizer/__tests__/sortB.spec.ts`
+Run: `cd docs && npx vitest run .vitepress/theme/visualizer/__tests__/sortB.spec.ts`
 Expected: FAIL。
 
 - [ ] **Step 3: 实现五个生成器**
@@ -1441,7 +1441,7 @@ export function radixSortSteps(input: number[]): Step[] {
 
 - [ ] **Step 4: 跑测试确认通过**
 
-Run: `npx vitest run docs/.vitepress/theme/visualizer/__tests__/sortB.spec.ts`
+Run: `cd docs && npx vitest run .vitepress/theme/visualizer/__tests__/sortB.spec.ts`
 Expected: PASS。
 
 - [ ] **Step 5: Commit**
@@ -1718,7 +1718,7 @@ export default {
 <Visualizer algorithm="radix-sort" />
 ```
 
-Run: `npx vitest run && npm run docs:build && npm run docs:preview`
+Run: `cd docs && npx vitest run && npm run docs:build && npm run docs:preview`
 Expected: 全部单测 PASS；build 成功；预览页中两个动画可播放、单步、调速、改输入重算、非法输入（如 `5,abc,2000`）出现校验提示。
 
 - [ ] **Step 5: Commit**
@@ -1733,7 +1733,7 @@ git commit -m "feat: 动画基建——PlayerShell/ArrayBar/Visualizer 与 9 种
 ### Task 11: 9 个排序模块页挂动画
 
 **Files:**
-- Modify: `docs/09_排序/01_插入排序.md`、`02_希尔排序.md`、`03_冒泡排序.md`、`04_快速排序.md`、`05_简单选择排序.md`、`06_堆排序.md`、`07_归并排序.md`、`08_计数排序.md`、`09_基数排序.md`（以 `npm run gen:pages` 生成的实际文件名为准——先 `ls docs/09_排序/` 确认，模块目录名是权威来源）
+- Modify: `docs/09_排序/01_插入排序.md`、`02_希尔排序.md`、`03_冒泡排序.md`、`04_快速排序.md`、`05_简单选择排序.md`、`06_堆排序.md`、`07_归并排序.md`、`08_计数排序.md`、`09_基数排序.md`（以 `cd docs && npm run gen:pages` 生成的实际文件名为准——先 `ls docs/09_排序/` 确认，模块目录名是权威来源）
 
 **Interfaces:**
 - Consumes: registry 键（Task 10）、骨架页"## 动画演示"节（Task 4 模板）
@@ -1767,7 +1767,7 @@ Expected: 9 个模块页 + index.md（名称以源码目录为准）。
 
 - [ ] **Step 3: 构建与预览验证**
 
-Run: `npm run check && npm run test && npm run docs:build && npm run docs:preview`
+Run: `cd docs && npm run check && npm run test && npm run docs:build && npm run docs:preview`
 Expected: check 通过、单测全 PASS、build 成功；预览中 9 个排序页动画均正常。
 
 - [ ] **Step 4: Commit**
@@ -1794,17 +1794,17 @@ git commit -m "feat: 9 个排序模块页挂载动画（V1 批次完成）"
 本项目配有 VitePress 教程站：65 个模块的讲解、源码展示与排序算法动画。
 
 ```bash
-npm install
+cd docs && npm install
 npm run docs:dev      # http://localhost:5173
 ```
 
-其他命令：`npm run docs:build`（构建静态产物）、`npm run test`（动画步骤单测）、
-`npm run check`（讲解页完整性检查）、`npm run gen:pages`（为新模块生成骨架页）。
+其他命令：`cd docs && npm run docs:build`（构建静态产物）、`cd docs && npm run test`（动画步骤单测）、
+`cd docs && npm run check`（讲解页完整性检查）、`cd docs && npm run gen:pages`（为新模块生成骨架页）。
 ```
 
 - [ ] **Step 2: 全量验证**
 
-Run: `npm run check && npm run test && npm run docs:build`
+Run: `cd docs && npm run check && npm run test && npm run docs:build`
 Expected: 三条全部通过；`docs/.vitepress/dist/` 生成完整站点。
 
 - [ ] **Step 3: 验收对照（spec 验收标准 1~7）**
