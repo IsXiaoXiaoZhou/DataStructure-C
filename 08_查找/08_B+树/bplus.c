@@ -7,6 +7,44 @@
 
 #include "bplus.h"
 
+#ifdef BPT_LEAK_CHECK
+/* 泄漏检查计数 wrapper（编译加 -DBPT_LEAK_CHECK 启用，见 bplus.h 说明）。
+ * wrapper 定义处宏尚未生效，体内调用真实 malloc/free；
+ * 定义完成后重定向，后续本模块全部 malloc/free 均被计数 */
+static size_t bpt_lc_cnt_in = 0;
+static size_t bpt_lc_cnt_out = 0;
+
+void *bpt_lc_malloc(size_t size)
+{
+    void *p = malloc(size);
+    if (p != NULL) {
+        ++bpt_lc_cnt_in;
+    }
+    return p;
+}
+
+void bpt_lc_free(void *p)
+{
+    if (p != NULL) {
+        ++bpt_lc_cnt_out;
+    }
+    free(p);
+}
+
+size_t bpt_lc_in(void)
+{
+    return bpt_lc_cnt_in;
+}
+
+size_t bpt_lc_out(void)
+{
+    return bpt_lc_cnt_out;
+}
+
+#define malloc bpt_lc_malloc
+#define free   bpt_lc_free
+#endif
+
 
 /* ========== 内部工具 ========== */
 
@@ -323,7 +361,7 @@ DsResult bpt_delete(BPTree *t, int key)
         leaf->keys[j] = leaf->keys[j + 1];
     }
     leaf->n--;
-    /* 修正祖先路由键 */
+    /* 修正祖先路由键 —— 双保险: 旧趟覆盖非删除路径的常规修正, 新趟兜底收缩与空叶场景 */
     {
         BPTNode *x = leaf;
         while (x->parent != NULL) {
@@ -427,7 +465,9 @@ DsResult bpt_delete(BPTree *t, int key)
                     }
                     if (ci <= p->n) {
                         p->ch[ci] = c;
-                        c->parent = p;
+                        if (c != NULL) {        /* 防御: 与根分支(根退化处理)对称 */
+                            c->parent = p;
+                        }
                     }
                 }
                 free(x);
@@ -530,6 +570,27 @@ DsResult bpt_destroy(BPTree *t)
 
 /* ========== 验证 ========== */
 
+/* 自上而下路由键不变式校验: 每个内部结点对每个 ci>0,
+ * keys[ci-1] 必须等于孩子 ch[ci] 子树当前最小键(沿 ch[ci] 走到
+ * 最左叶取首键); 违规计入 cnt(路由键失准会表现为查找假未命中) */
+static void route_verify(BPTNode *x, size_t *cnt)
+{
+    int i = 0;
+    if (x == NULL || x->leaf) {
+        return;
+    }
+    for (i = 1; i <= x->n; ++i) {
+        BPTNode *minleaf = leftmost(x->ch[i]);
+        if (minleaf == NULL || minleaf->n == 0 ||
+            x->keys[i - 1] != minleaf->keys[0]) {
+            ++(*cnt);
+        }
+    }
+    for (i = 0; i <= x->n; ++i) {
+        route_verify(x->ch[i], cnt);
+    }
+}
+
 DsResult bpt_verify(BPTree t, size_t *viol)
 {
     BPTNode *leaf = NULL;
@@ -555,6 +616,7 @@ DsResult bpt_verify(BPTree t, size_t *viol)
         }
         leaf = (BPTNode *)LEAF_NEXT(leaf);
     }
+    route_verify(t, &cnt);
     if (viol != NULL) {
         *viol = cnt;
     }

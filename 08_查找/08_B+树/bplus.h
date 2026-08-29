@@ -75,4 +75,14 @@ DsResult bpt_destroy(BPTree *t);
  * @return 对应的字符串描述
  */
 const char *ds_status_str(DsStatus s);
+
+#ifdef BPT_LEAK_CHECK
+/* 泄漏检查支持（编译加 -DBPT_LEAK_CHECK 启用，默认不启用、
+ * 不影响常规构建输出）: bplus.c 内将 malloc/free 重定义为计数
+ * wrapper 拦截本模块结点分配/释放，测试末尾比对进出计数 */
+size_t bpt_lc_in(void);     /* 累计分配次数 */
+size_t bpt_lc_out(void);    /* 累计释放次数 */
+void  *bpt_lc_malloc(size_t size);
+void   bpt_lc_free(void *p);
+#endif
 #endif

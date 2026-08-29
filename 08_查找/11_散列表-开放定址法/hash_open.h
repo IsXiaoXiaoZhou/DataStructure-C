@@ -18,7 +18,7 @@
 
 #include <stddef.h>
 
-/* 六值状态码（与全工程逐字一致） */
+/* 七值状态码（与全工程逐字一致） */
 typedef enum {
     DS_OK = 0,
     DS_ERROR,

@@ -290,5 +290,19 @@ int main(void)
     }
 
     printf("全部测试通过\n");
+
+#ifdef BPT_LEAK_CHECK
+    /* 泄漏检查: 编译加 -DBPT_LEAK_CHECK 启用(gcc -Wall -Wextra -std=c99
+     * -DBPT_LEAK_CHECK *.c -o demo.exe), 比对 bplus.c 计数 wrapper 的
+     * malloc/free 进出次数; 默认编译不定义此宏, 本块不参与、输出不变 */
+    if (bpt_lc_in() == bpt_lc_out() && bpt_lc_in() > 0) {
+        printf("[LEAK CHECK] HEAP OK: malloc=%u free=%u\n",
+               (unsigned)bpt_lc_in(), (unsigned)bpt_lc_out());
+    } else {
+        printf("[LEAK CHECK] HEAP LEAK: malloc=%u free=%u\n",
+               (unsigned)bpt_lc_in(), (unsigned)bpt_lc_out());
+        return 1;
+    }
+#endif
     return 0;
 }
