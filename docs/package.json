@@ -8,6 +8,7 @@
     "docs:preview": "vitepress preview",
     "gen:pages": "node scripts/gen-module-pages.mjs",
     "check": "node scripts/check-docs.mjs",
+    "verify": "node scripts/verify-pages.mjs",
     "test": "vitest run"
   },
   "devDependencies": {

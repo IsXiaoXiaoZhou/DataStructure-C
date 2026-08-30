@@ -11,6 +11,7 @@ build/
 
 # 本地工具 / agent 计划文件（不入库）
 .zcode/
+# 例外：docs/superpowers/{specs,plans} 为站点设计史料，有意入库
 
 # 教程站（VitePress）
 node_modules/

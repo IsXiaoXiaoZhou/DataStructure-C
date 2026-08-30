@@ -24,8 +24,7 @@ typedef enum {
     DS_OUT_OF_RANGE,    /* 位置/下标越界 */
     DS_OVERFLOW,        /* 空间已满或内存分配失败 */
     DS_EMPTY,           /* 对空结构取元素 */
-    DS_NOT_FOUND,       /* 查找未命中（业务正常结果，非异常） */
-    DS_DUPLICATE        /* 插入重复键 */
+    DS_NOT_FOUND        /* 查找未命中（业务正常结果，非异常） */
 } DsStatus;
 
 /* 返回结果：状态码 + 可读描述 */

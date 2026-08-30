@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "数据结构"
   text: "C 语言工程实现"
-  tagline: 65 个自包含模块 · 严蔚敏/王道体系 · 断言测试对拍验证 · 算法动画演示
+  tagline: 60 个自包含模块 · 严蔚敏/王道体系 · 断言测试对拍验证 · 算法动画演示
   actions:
     - theme: brand
       text: 学习路线
