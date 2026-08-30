@@ -28,6 +28,9 @@ export default defineConfig({
     ],
     sidebar: genSidebar(fileURLToPath(new URL('../', import.meta.url))),
     search: { provider: 'local' },
-    outline: 'deep'
+    outline: 'deep',
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/IsXiaoXiaoZhou/DataStructure-C' }
+    ]
   }
 })
