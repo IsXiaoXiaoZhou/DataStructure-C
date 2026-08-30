@@ -37,6 +37,20 @@ import { bracketMatchSteps } from './steps/bracketMatch'
 import { circularQueueSteps } from './steps/circularQueue'
 import { linkQueueSteps } from './steps/linkQueue'
 import { dancePartnerSteps } from './steps/dancePartner'
+// 批3：树类（Tree 渲染器）
+import { treeStorageViewsSteps } from './steps/treeStorageViews'
+import { seqBitreeIndexSteps } from './steps/seqBitreeIndex'
+import { bitreeTraverseSteps, type TraverseMode } from './steps/bitreeTraverse'
+import { threadBuildSteps } from './steps/threadBuild'
+import { forestConvertSteps } from './steps/forestConvert'
+import { huffmanBuildSteps } from './steps/huffmanBuild'
+import { unionFindOpsSteps } from './steps/unionFindOps'
+import { bstInsertSearchSteps } from './steps/bstInsertSearch'
+import { avlRotateSteps, avlRotationCount } from './steps/avlRotate'
+import { rbInsertSteps } from './steps/rbInsert'
+import { btreeSplitSteps } from './steps/btreeSplit'
+import { bplusInsertSteps } from './steps/bplusInsert'
+import { preNullBuild } from './steps/treeKit'
 
 function numberList(min: number, max: number, maxLen: number) {
   return {
@@ -79,8 +93,7 @@ const isPrime = (v: number) => {
 }
 const ERR = (msg: string, example: string) => `${msg}，如 ${example}`
 
-// ---------- 批2 通用 parse/validate 小工具 ----------
-/** 栈类操作串："push:值" / "pop"（大小写兼容）；看不懂的片段原样带回待 validate 拒绝 */
+// ---------- 批2 通用 parse/validate 小工具 ----------/** 栈类操作串："push:值" / "pop"（大小写兼容）；看不懂的片段原样带回待 validate 拒绝 */
 function stackOpSeg(text: string) {
   return text.split(/[,，\s]+/).filter(Boolean).map(t => {
     const m = /^push:(-?\d+)$/i.exec(t)
@@ -104,6 +117,23 @@ function checkOps(ops: { op: string; v?: number }[], maxOps: number, ex: string,
   if (ops.length > maxOps) return ERR(`最多 ${maxOps} 个操作`, ex)
   if (ops.some(o => o.op !== 'push' && o.op !== 'pop' && o.op !== 'en' && o.op !== 'de')) return ERR(`操作只认 ${enName}`, ex)
   if (ops.some(o => (o.op === 'push' || o.op === 'en') && (!Number.isInteger(o.v) || (o.v as number) < 1 || (o.v as number) > 999))) return ERR('入栈/入队值需为 1~999 的整数', ex)
+  return null
+}
+
+// ---------- 批3 通用 parse/validate 小工具（树类） ----------
+/** 唯一性检查：重复返回提示 */
+function uniqErr(a: number[], name: string, ex: string): string | null {
+  return new Set(a).size !== a.length ? ERR(`${name}不可重复（重复键会使树形语义失真）`, ex) : null
+}
+/** 带空标记先序串的键位检查：'#' 或单字符字母数字 */
+function tokenErr(tokens: string[], ex: string): string | null {
+  if (tokens.length < 1 || tokens.length > 25) return ERR('标记串需 1~25 个（逗号分隔）', ex)
+  if (tokens.some(t => t !== '#' && !/^[A-Za-z0-9]$/.test(t))) return ERR('键位只认单个字母/数字，空子树用 # 表示', ex)
+  return null
+}
+/** level 模式：不允许 # */
+function levelTokenErr(tokens: string[], ex: string): string | null {
+  if (tokens.some(t => t === '#')) return ERR('level 模式输入层序数据，不带空标记 #', ex)
   return null
 }
 
@@ -448,6 +478,184 @@ export const registry: Record<string, VisualizerDef> = {
       if (sexes.length < 2 || sexes.length > 10) return ERR('需 2~10 位到场者', ex)
       if (sexes.some(s => s !== 'M' && s !== 'F')) return ERR('每位只认 M（男）或 F（女），与 dance_partner.c 的性别标记一致', ex)
       return null
+    }
+  },
+
+  // ---------- 批3：06_树 / 08_查找（Tree 渲染器，统一树形态） ----------
+  'tree-storage-views': {
+    title: '树的三种存储结构（双亲/孩子链/孩子兄弟）', renderer: 'tree', steps: (raw: any) => treeStorageViewsSteps({ values: raw }), defaultInput: '1,2,3,4,5',
+    parse: (text: string) => numSeg(text),
+    validate: (input: unknown): string | null => {
+      const a = input as number[]
+      const ex = '1,2,3,4,5'
+      if (!Array.isArray(a) || a.length < 1 || a.length > 5) return ERR('需 1~5 个数字（层序数据，按完全树逐层挂父子）', ex)
+      if (a.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('值需为 1~999 的整数', ex)
+      return uniqErr(a, '结点值', ex)
+    }
+  },
+  'seq-bitree-index': {
+    title: '二叉树顺序存储编号关系（2i / 2i+1 / ⌊i/2⌋）', renderer: 'tree', steps: (raw: any) => seqBitreeIndexSteps({ values: raw }), defaultInput: '1,2,3,4,5',
+    parse: (text: string) => numSeg(text),
+    validate: (input: unknown): string | null => {
+      const a = input as number[]
+      const ex = '1,2,3,4,5'
+      if (!Array.isArray(a) || a.length < 1 || a.length > 7) return ERR('需 1~7 个数字（层序数据，完全树形态）', ex)
+      if (a.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('值需为 1~999 的整数', ex)
+      return uniqErr(a, '结点值', ex)
+    }
+  },
+  'bitree-traverse': {
+    title: '二叉树遍历（先/中/后/层序，四模式参数化）', renderer: 'tree', defaultInput: 'pre:A,B,C,#,D,#,#,E,#,#,F,#,#',
+    parse: (text: string) => {
+      const m = /^([A-Za-z]+)[:：](.*)$/s.exec(text.trim())
+      const mode = m ? m[1].toLowerCase() : ''
+      const rest = m ? m[2] : text
+      return { mode, tokens: rest.split(/[,，\s]+/).filter(Boolean) }
+    },
+    validate: (input: unknown): string | null => {
+      const { mode, tokens } = input as { mode: string; tokens: string[] }
+      const ex = 'pre:A,B,C,#,D,#,#,E,#,#,F,#,#'
+      if (!['pre', 'in', 'post', 'level'].includes(mode)) return ERR('模式前缀只认 pre: / in: / post: / level:', ex)
+      const terr = tokenErr(tokens, ex)
+      if (terr) return terr
+      if (mode === 'level') {
+        const lerr = levelTokenErr(tokens, ex)
+        if (lerr) return lerr
+        return null
+      }
+      const built = preNullBuild(tokens)
+      if (!built || built.root == null) return ERR('标记串构不成树：# 也要消费，兄弟子树的位置才不会错位', ex)
+      return null
+    },
+    steps: (raw: any) => bitreeTraverseSteps({ mode: raw.mode as TraverseMode, tokens: raw.tokens })
+  },
+  'thread-build': {
+    title: '中序线索化（空链域回收为前驱后继线索）', renderer: 'tree', steps: threadBuildSteps, defaultInput: 'A,B,C,#,D,#,#,E,#,#,F,#,#',
+    parse: (text: string) => ({ tokens: text.split(/[,，\s]+/).filter(Boolean) }),
+    validate: (input: unknown): string | null => {
+      const { tokens } = input as { tokens: string[] }
+      const ex = 'A,B,C,#,D,#,#,E,#,#,F,#,#'
+      const terr = tokenErr(tokens, ex)
+      if (terr) return terr
+      const built = preNullBuild(tokens)
+      if (!built || built.root == null) return ERR('标记串构不成树：# 也要消费，兄弟子树的位置才不会错位', ex)
+      return null
+    }
+  },
+  'forest-convert': {
+    title: '森林转二叉树（左孩子右兄弟重排）', renderer: 'tree', steps: forestConvertSteps, defaultInput: '1,2,3;4,5',
+    parse: (text: string) => {
+      const segsRaw = text.split(/[;；]/).map(s => s.trim())
+      return { segsRaw, trees: segsRaw.map(s => numSeg(s) ?? []) }
+    },
+    validate: (input: unknown): string | null => {
+      const { segsRaw, trees } = input as { segsRaw: string[]; trees: number[][] }
+      const ex = '1,2,3;4,5'
+      if (segsRaw.length < 1 || segsRaw.length > 3) return ERR('需 1~3 棵树（分号分隔，每段一棵树的层序数据）', ex)
+      if (trees.some(t => t.length < 1 || t.length > 5)) return ERR('每棵树需 1~5 个数字', ex)
+      const all = trees.flat()
+      if (all.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('值需为 1~999 的整数', ex)
+      return uniqErr(all, '结点值（全森林）', ex)
+    }
+  },
+  'huffman-build': {
+    title: '哈夫曼树构造（选两小合并 + WPL）', renderer: 'tree', steps: (raw: any) => huffmanBuildSteps({ weights: raw }), defaultInput: '5,2,9,1,7',
+    parse: (text: string) => numSeg(text),
+    validate: (input: unknown): string | null => {
+      const a = input as number[]
+      const ex = '5,2,9,1,7'
+      if (!Array.isArray(a) || a.length < 2 || a.length > 8) return ERR('需 2~8 个权值（正整数）', ex)
+      if (a.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('权值须为正数（1~999）', ex)
+      return null
+    }
+  },
+  'union-find-ops': {
+    title: '并查集 union/find（按大小合并 + 路径压缩）', renderer: 'tree', steps: unionFindOpsSteps, defaultInput: 'u:1,2,u:3,4,f:2,u:1,3,f:4',
+    parse: (text: string) => {
+      // u 的两个参数用逗号写、操作间也用逗号分——用全局正则直接扫描，剩余非空白视为看不懂
+      const ops: ({ op: 'u'; a: number; b: number } | { op: 'f'; a: number })[] = []
+      const re = /u:(\d+)\s*[,，]\s*(\d+)|f:(\d+)/gi
+      let m: RegExpExecArray | null
+      while ((m = re.exec(text)) !== null) {
+        if (m[3] !== undefined) ops.push({ op: 'f', a: Number(m[3]) })
+        else ops.push({ op: 'u', a: Number(m[1]), b: Number(m[2]) })
+      }
+      const leftovers = text.replace(re, '').replace(/[,，\s]/g, '')
+      const elems = ops.flatMap(o => (o.op === 'u' ? [o.a, o.b] : [o.a]))
+      return { ops, leftovers, n: elems.length ? Math.max(...elems) : NaN }
+    },
+    validate: (input: unknown): string | null => {
+      const { ops, leftovers, n } = input as { ops: { op: 'u' | 'f'; a: number; b?: number }[]; leftovers: string; n: number }
+      const ex = 'u:1,2,u:3,4,f:2,u:1,3,f:4'
+      if (leftovers) return ERR(`有看不懂的片段（只认 "u:x,y" 合并 / "f:x" 查找）`, ex)
+      if (ops.length < 1 || ops.length > 10) return ERR('需 1~10 个操作', ex)
+      if (!Number.isInteger(n) || n < 2 || n > 9) return ERR('元素需为 1~9 的整数（至少出现 2 个不同元素）', ex)
+      return null
+    }
+  },
+  'bst-insert-search': {
+    title: '二叉排序树插入与查找（比较路径）', renderer: 'tree', steps: bstInsertSearchSteps, defaultInput: '5,2,9,1,7|7',
+    parse: (text: string) => {
+      const parts = segs(text, 2)
+      return { parts, keys: parts ? numSeg(parts[0]) : null, target: parts ? Number(parts[1]) : NaN }
+    },
+    validate: (input: unknown): string | null => {
+      const { parts, keys, target } = input as { parts: string[] | null; keys: number[] | null; target: number }
+      const ex = '5,2,9,1,7|7'
+      if (!parts) return ERR('格式：插入串|查找目标', ex)
+      if (!keys || keys.length < 1 || keys.length > 9) return ERR('插入串需 1~9 个整数', ex)
+      if (keys.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('键需为 1~999 的整数', ex)
+      const dup = uniqErr(keys, '键', ex)
+      if (dup) return dup
+      if (!Number.isInteger(target) || target < 1 || target > 999) return ERR('查找目标需为 1~999 的整数', ex)
+      return null
+    }
+  },
+  'avl-rotate': {
+    title: 'AVL 插入失衡与旋转（LL/LR/RR/RL）', renderer: 'tree', steps: (raw: any) => avlRotateSteps({ keys: raw }), defaultInput: '1,2,3',
+    parse: (text: string) => numSeg(text),
+    validate: (input: unknown): string | null => {
+      const a = input as number[]
+      const ex = '1,2,3'
+      if (!Array.isArray(a) || a.length < 3 || a.length > 6) return ERR('需 3~6 个键（validate 会检测序列能否触发旋转）', ex)
+      if (a.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('键需为 1~999 的整数', ex)
+      const dup = uniqErr(a, '键', ex)
+      if (dup) return dup
+      if (avlRotationCount(a) < 1) return ERR('该序列按 avl.c 插入全程无失衡（如 5,2,9,1 前三键构成满树，第 4 键 BF 仅 ±1）——试能触发旋转的序列：1,2,3 触发 RR、3,2,1 触发 LL、3,1,2 触发 LR、1,3,2 触发 RL', ex)
+      return null
+    }
+  },
+  'rb-insert': {
+    title: '红黑树插入（叔红变色上推 / 叔黑旋转）', renderer: 'tree', steps: (raw: any) => rbInsertSteps({ keys: raw }), defaultInput: '10,5,20,3',
+    parse: (text: string) => numSeg(text),
+    validate: (input: unknown): string | null => {
+      const a = input as number[]
+      const ex = '10,5,20,3'
+      if (!Array.isArray(a) || a.length < 4 || a.length > 8) return ERR('需 4~8 个键（4 个不同键必产生至少一次修复动作）', ex)
+      if (a.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('键需为 1~999 的整数', ex)
+      return uniqErr(a, '键', ex)
+    }
+  },
+  'btree-split': {
+    title: 'B 树插入与分裂（t=3，先分裂再下降）', renderer: 'tree', steps: (raw: any) => btreeSplitSteps({ keys: raw }), defaultInput: '10,20,40,50,30,60',
+    parse: (text: string) => numSeg(text),
+    validate: (input: unknown): string | null => {
+      const a = input as number[]
+      const ex = '10,20,40,50,30,60'
+      if (!Array.isArray(a) || a.length < 6 || a.length > 8) return ERR('需 6~8 个键（本实现 t=3：单结点至多 2t−1=5 键，第 6 键必触发根分裂）', ex)
+      if (a.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('键需为 1~999 的整数', ex)
+      return uniqErr(a, '键', ex)
+    }
+  },
+  'bplus-insert': {
+    title: 'B+ 树插入（叶分裂 + 路由键上浮）', renderer: 'tree', steps: (raw: any) => bplusInsertSteps({ keys: raw }), defaultInput: '10,20,30,40,50,60,70,80,90,15',
+    parse: (text: string) => numSeg(text),
+    validate: (input: unknown): string | null => {
+      const a = input as number[]
+      const ex = '10,20,30,40,50,60,70,80,90,15'
+      if (!Array.isArray(a) || a.length < 5 || a.length > 14) return ERR('需 5~14 个键（本实现 t=3：结点上界 2t=6 键，第 6 键触发叶分裂）', ex)
+      if (a.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('键需为 1~999 的整数', ex)
+      return uniqErr(a, '键', ex)
     }
   }
 }

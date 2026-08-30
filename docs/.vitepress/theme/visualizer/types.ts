@@ -7,7 +7,7 @@ export interface Step {
   narration: string
 }
 
-export type RendererKind = 'arrayBar' | 'stackQueue' | 'listNode'
+export type RendererKind = 'arrayBar' | 'stackQueue' | 'listNode' | 'tree'
 
 export interface VisualizerDef {
   title: string
