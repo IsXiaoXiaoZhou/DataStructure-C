@@ -7,9 +7,11 @@ export interface Step {
   narration: string
 }
 
+export type RendererKind = 'arrayBar' | 'stackQueue' | 'listNode'
+
 export interface VisualizerDef {
   title: string
-  renderer: 'arrayBar'
+  renderer: RendererKind
   parse: (text: string) => unknown
   validate: (input: unknown) => string | null
   steps: (input: any) => Step[]

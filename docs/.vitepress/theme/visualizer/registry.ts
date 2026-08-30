@@ -26,6 +26,17 @@ import { hashOpenProbeSteps } from './steps/hashOpenProbe'
 import { hashAslCompareSteps } from './steps/hashAslCompare'
 import { graphMatrixBuildSteps } from './steps/graphMatrixBuild'
 import { hashChainInsertSteps } from './steps/hashChainInsert'
+// 批2：栈 / 队列 / 链表（StackQueue / ListNode 双渲染器）
+import { singlyLinkedInsertSteps } from './steps/singlyLinkedInsert'
+import { doublyLinkedInsertSteps } from './steps/doublyLinkedInsert'
+import { josephusRingSteps } from './steps/josephusRing'
+import { seqStackSteps } from './steps/seqStack'
+import { sharedStackSteps } from './steps/sharedStack'
+import { linkStackSteps } from './steps/linkStack'
+import { bracketMatchSteps } from './steps/bracketMatch'
+import { circularQueueSteps } from './steps/circularQueue'
+import { linkQueueSteps } from './steps/linkQueue'
+import { dancePartnerSteps } from './steps/dancePartner'
 
 function numberList(min: number, max: number, maxLen: number) {
   return {
@@ -67,6 +78,34 @@ const isPrime = (v: number) => {
   return true
 }
 const ERR = (msg: string, example: string) => `${msg}，如 ${example}`
+
+// ---------- 批2 通用 parse/validate 小工具 ----------
+/** 栈类操作串："push:值" / "pop"（大小写兼容）；看不懂的片段原样带回待 validate 拒绝 */
+function stackOpSeg(text: string) {
+  return text.split(/[,，\s]+/).filter(Boolean).map(t => {
+    const m = /^push:(-?\d+)$/i.exec(t)
+    if (m) return { op: 'push', v: Number(m[1]) }
+    if (/^pop$/i.test(t)) return { op: 'pop' as const }
+    return { op: `看不懂的片段:${t}` }
+  })
+}
+/** 队列操作串："en:值" / "de" */
+function queueOpSeg(text: string) {
+  return text.split(/[,，\s]+/).filter(Boolean).map(t => {
+    const m = /^en:(-?\d+)$/i.exec(t)
+    if (m) return { op: 'en', v: Number(m[1]) }
+    if (/^de$/i.test(t)) return { op: 'de' as const }
+    return { op: `看不懂的片段:${t}` }
+  })
+}
+/** 校验操作串数组的通用检查（ops 形状 + push 值域） */
+function checkOps(ops: { op: string; v?: number }[], maxOps: number, ex: string, enName: string): string | null {
+  if (ops.length < 1) return ERR(`至少 1 个操作（${enName}）`, ex)
+  if (ops.length > maxOps) return ERR(`最多 ${maxOps} 个操作`, ex)
+  if (ops.some(o => o.op !== 'push' && o.op !== 'pop' && o.op !== 'en' && o.op !== 'de')) return ERR(`操作只认 ${enName}`, ex)
+  if (ops.some(o => (o.op === 'push' || o.op === 'en') && (!Number.isInteger(o.v) || (o.v as number) < 1 || (o.v as number) > 999))) return ERR('入栈/入队值需为 1~999 的整数', ex)
+  return null
+}
 
 /** 段1=整数列表、段2=整数列表 的双段输入骨架（错误信息统一带示例）
  *  build: 把两段整数映射成 steps() 需要的输入形状 */
@@ -296,6 +335,118 @@ export const registry: Record<string, VisualizerDef> = {
       if (!Array.isArray(a) || a.length < 2 || a.length > 12) return ERR('关键字需 2~12 个', ex)
       if (new Set(a).size !== a.length) return ERR('关键字不可重复（链上同键会让 ASL 口径失真）', ex)
       if (a.some(v => v < 0 || v > 999)) return ERR('关键字需为 0~999 的整数', ex)
+      return null
+    }
+  },
+
+  // ---------- 批2：01_线性表（链表，ListNode 渲染器） ----------
+  'singly-linked-insert': {
+    title: '单链表按位插入（先接后继）', renderer: 'listNode', steps: singlyLinkedInsertSteps, defaultInput: '3,40',
+    parse: (text: string) => { const a = numSeg(text) ?? []; return { raw: a, pos: a[0], value: a[1] } },
+    validate: (input: unknown): string | null => {
+      const a = (input as { raw: number[] }).raw
+      const ex = '3,40'
+      if (!Array.isArray(a) || a.length !== 2) return ERR('输入"位序,值"两个整数（演示链表固定为 12,25,33,47,58）', ex)
+      const [pos, value] = a
+      if (!Number.isInteger(pos) || pos < 1 || pos > 6) return ERR('位序需在 1~6（表长 5，表尾追加即 6）', ex)
+      if (!Number.isInteger(value) || value < 1 || value > 999) return ERR('待插值需为 1~999 的整数', ex)
+      return null
+    }
+  },
+  'doubly-linked-insert': {
+    title: '双链表按位插入（四条指针）', renderer: 'listNode', steps: doublyLinkedInsertSteps, defaultInput: '3,40',
+    parse: (text: string) => { const a = numSeg(text) ?? []; return { raw: a, pos: a[0], value: a[1] } },
+    validate: (input: unknown): string | null => {
+      const a = (input as { raw: number[] }).raw
+      const ex = '3,40'
+      if (!Array.isArray(a) || a.length !== 2) return ERR('输入"位序,值"两个整数（演示链表固定为 12,25,33,47,58）', ex)
+      const [pos, value] = a
+      if (!Number.isInteger(pos) || pos < 1 || pos > 6) return ERR('位序需在 1~6（表长 5，表尾追加即 6）', ex)
+      if (!Number.isInteger(value) || value < 1 || value > 999) return ERR('待插值需为 1~999 的整数', ex)
+      return null
+    }
+  },
+  'josephus-ring': {
+    title: '约瑟夫环报数出列', renderer: 'listNode', steps: josephusRingSteps, defaultInput: '8,1,3',
+    parse: (text: string) => { const a = numSeg(text) ?? []; return { raw: a, n: a[0], start: a[1], m: a[2] } },
+    validate: (input: unknown): string | null => {
+      const a = (input as { raw: number[] }).raw
+      const ex = '8,1,3'
+      if (!Array.isArray(a) || a.length !== 3) return ERR('输入"人数,起始,报数m"三个整数', ex)
+      const [n, start, m] = a
+      if (!Number.isInteger(n) || n < 2 || n > 9) return ERR('人数需为 2~9 的整数', ex)
+      if (!Number.isInteger(start) || start < 1 || start > n) return ERR(`起始位序需在 1~${n}`, ex)
+      if (!Number.isInteger(m) || m < 1 || m > 6) return ERR('报数 m 需为 1~6 的整数', ex)
+      return null
+    }
+  },
+
+  // ---------- 批2：02_栈（StackQueue / ListNode 渲染器） ----------
+  'seq-stack': {
+    title: '顺序栈 push/pop（top 指栈顶元素）', renderer: 'stackQueue', steps: seqStackSteps, defaultInput: 'push:5,push:2,pop,push:7',
+    parse: (text: string) => ({ ops: stackOpSeg(text) }),
+    validate: (input: unknown): string | null => checkOps((input as { ops: { op: string; v?: number }[] }).ops, 10, 'push:5,push:2,pop,push:7', '"push:值" / "pop"')
+  },
+  'shared-stack': {
+    title: '两栈共享空间（top1/top2 相向增长）', renderer: 'stackQueue', steps: sharedStackSteps, defaultInput: '1:push:5,2:push:9,1:push:3,2:pop',
+    parse: (text: string) => ({
+      ops: text.split(/[,，\s]+/).filter(Boolean).map(t => {
+        const p = /^([12]):push:(-?\d+)$/i.exec(t)
+        if (p) return { id: Number(p[1]) as 1 | 2, op: 'push', v: Number(p[2]) }
+        const q = /^([12]):pop$/i.exec(t)
+        if (q) return { id: Number(q[1]) as 1 | 2, op: 'pop' }
+        return { id: 0, op: `看不懂的片段:${t}` }
+      })
+    }),
+    validate: (input: unknown): string | null => {
+      const ops = (input as { ops: { id: number; op: string; v?: number }[] }).ops
+      const ex = '1:push:5,2:push:9,1:push:3,2:pop'
+      if (ops.length < 1) return ERR('至少 1 个操作（"栈号:push:值" / "栈号:pop"）', ex)
+      if (ops.length > 10) return ERR('最多 10 个操作', ex)
+      if (ops.some(o => o.op !== 'push' && o.op !== 'pop')) return ERR('操作只认"栈号:push:值" / "栈号:pop"（栈号为 1 或 2）', ex)
+      if (ops.some(o => o.op === 'push' && (!Number.isInteger(o.v) || (o.v as number) < 1 || (o.v as number) > 999))) return ERR('入栈值需为 1~999 的整数', ex)
+      return null
+    }
+  },
+  'link-stack': {
+    title: '链栈头插/头删（top 即栈顶）', renderer: 'listNode', steps: linkStackSteps, defaultInput: 'push:5,push:2,push:9,pop,pop',
+    parse: (text: string) => ({ ops: stackOpSeg(text) }),
+    validate: (input: unknown): string | null => checkOps((input as { ops: { op: string; v?: number }[] }).ops, 10, 'push:5,push:2,push:9,pop,pop', '"push:值" / "pop"')
+  },
+  'bracket-match': {
+    title: '括号匹配（左括号入栈期待配对）', renderer: 'stackQueue', steps: bracketMatchSteps, defaultInput: '{[()]}([)]',
+    parse: (text: string) => ({ expr: text.replace(/\s+/g, '') }),
+    validate: (input: unknown): string | null => {
+      const { expr } = input as { expr: string }
+      const ex = '{[()]}([)]'
+      if (!expr || expr.length > 16) return ERR('括号串需 1~16 个字符', ex)
+      if (/[^()[\]{}]/.test(expr)) return ERR('只能含 ( ) [ ] { } 六种括号字符', ex)
+      if ((expr.match(/[([{]/g) ?? []).length > 8) return ERR('左括号个数需 ≤ 8（演示栈容量）', ex)
+      return null
+    }
+  },
+
+  // ---------- 批2：03_队列（StackQueue / ListNode 渲染器） ----------
+  'circular-queue': {
+    title: '循环顺序队列（牺牲一格判满）', renderer: 'stackQueue', steps: circularQueueSteps, defaultInput: 'en:5,en:2,en:7,de,en:9,en:3,en:4,de',
+    parse: (text: string) => ({ ops: queueOpSeg(text) }),
+    validate: (input: unknown): string | null => checkOps((input as { ops: { op: string; v?: number }[] }).ops, 12, 'en:5,en:2,de,en:7', '"en:值" / "de"')
+  },
+  'link-queue': {
+    title: '链队列（头结点 + front/rear）', renderer: 'listNode', steps: linkQueueSteps, defaultInput: 'en:5,en:2,de,en:7',
+    parse: (text: string) => ({ ops: queueOpSeg(text) }),
+    validate: (input: unknown): string | null => checkOps((input as { ops: { op: string; v?: number }[] }).ops, 10, 'en:5,en:2,de,en:7', '"en:值" / "de"')
+  },
+  'dance-partner': {
+    title: '舞伴配对（两队列 FIFO）', renderer: 'stackQueue', steps: dancePartnerSteps, defaultInput: 'F,M,F,F,M,M,F',
+    parse: (text: string) => ({
+      sexes: text.toUpperCase().split(/[,，\s]+/).filter(Boolean)
+    }),
+    validate: (input: unknown): string | null => {
+      const { sexes } = input as { sexes: string[] }
+      const ex = 'F,M,F,F,M,M,F'
+      if (sexes.length < 2 || sexes.length > 10) return ERR('需 2~10 位到场者', ex)
+      if (sexes.some(s => s !== 'M' && s !== 'F')) return ERR('每位只认 M（男）或 F（女），与 dance_partner.c 的性别标记一致', ex)
       return null
     }
   }
