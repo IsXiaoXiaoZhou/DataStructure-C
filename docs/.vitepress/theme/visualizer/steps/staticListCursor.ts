@@ -15,7 +15,8 @@ export function staticListCursorSteps(input: StaticListCursorInput): Step[] {
   const n = list.length
   const cur: number[] = new Array(MAX).fill(0)
   for (let i = 1; i < n; i++) cur[i] = i + 1     // 数据链 1→2→…→n
-  for (let i = n + 1; i < MAX - 1; i++) cur[i] = i + 1 // 备用链 n+1→…→8
+  for (let i = n + 1; i < MAX - 2; i++) cur[i] = i + 1 // 备用链 n+1→…→8（下标 9 是数据链头结点，永不入备用链）
+  cur[MAX - 2] = 0                               // 备用链收尾（源码 list_init：space[MAX_SIZE-2].cur = 0）
   cur[0] = n + 1 <= MAX - 2 ? n + 1 : 0          // 备用链头指向首个空闲分量
   cur[MAX - 1] = n >= 1 ? 1 : 0                  // 头结点指向首个数据分量
 

@@ -23,8 +23,13 @@ export function hashFuncMapSteps(input: HashFuncMapInput): Step[] {
       [i], [i, i]))
   }
 
+  // 收尾按实际输入动态找一对同余撞桶的关键字（不硬编码默认数据的例子）
+  const clashBucket = buckets.findIndex(b => b.length >= 2)
+  const clashText = clashBucket >= 0
+    ? `${buckets[clashBucket][0]} 和 ${buckets[clashBucket][1]} 同余（都余 ${clashBucket}）撞进同一桶`
+    : '本轮输入恰好各余不同、没撞桶'
   steps.push(frame(
-    `映射完成：${keys.length} 个关键字各归各桶；H 值域 [0, ${p})，12 和 33 同余（都余 5）撞进同一桶——冲突不可避免，处理交给拉链法/开放定址法`))
+    `映射完成：${keys.length} 个关键字各归各桶，H 值域 [0, ${p})——${clashText}；关键字个数逼近 p 时冲突不可避免，处理交给拉链法/开放定址法`))
 
   return steps
 }

@@ -379,12 +379,15 @@ describe('spDijkstra 生成器', () => {
 // ---------- 12. topo-kahn ----------
 describe('topoKahn 生成器', () => {
   const input = { edges: [{ u: 0, v: 1 }, { u: 0, v: 2 }, { u: 2, v: 1 }, { u: 1, v: 3 }, { u: 2, v: 3 }], n: 4 }
-  it('入度 0 入队 → 出队 → 削后继：拓扑序 0→2→1→3，narration 给序号与入度变化', () => {
+  it('每轮取编号最小的 0 入度点（源码 topo_sort_kahn 口径，非 FIFO）：拓扑序 0→2→1→3', () => {
     const steps = topoKahnSteps(input)
     const all = allNarration(steps)
-    expect(all).toContain('出队输出 v0（第 1 个）')
-    expect(all).toContain('indegree[2] = 1 → 0，归零 → 入队')
+    expect(all).toContain('每轮重扫 indegree 数组、取编号最小的 0 入度点')
+    expect(all).toContain('候选 {0} 中编号最小的是 v0 → 输出（第 1 个）')
+    expect(all).toContain('候选 {2} 中编号最小的是 v2 → 输出（第 2 个）')
+    expect(all).toContain('indegree[2] = 1 → 0，归零 → 进入下一轮候选')
     expect(all).toContain('indegree[3] = 2 → 1')
+    expect(all).toContain('拓扑序不唯一')
     expect(last(steps).narration).toContain('v0 → v2 → v1 → v3')
     expect(last(steps).narration).toContain('共 4 = n 个全输出，无环')
     const o = last(steps).state as any
@@ -392,7 +395,13 @@ describe('topoKahn 生成器', () => {
     expect(o.nodes.every((nd: any) => nd.highlight)).toBe(true)
     expectGraphContract(steps)
   })
-  it('环输入给失败帧（队列空仍有剩余点）', () => {
+  it('回归 0->2,0->1|3：与源码一致输出 0→1→2（每轮取最小编号；FIFO 会让先入队的 2 插队）', () => {
+    const steps = topoKahnSteps({ edges: [{ u: 0, v: 2 }, { u: 0, v: 1 }], n: 3 })
+    const all = allNarration(steps)
+    expect(all).toContain('候选 {1,2} 中编号最小的是 v1 → 输出（第 2 个）')
+    expect(last(steps).narration).toContain('v0 → v1 → v2')
+  })
+  it('环输入给失败帧（扫不到 0 入度点仍有剩余）', () => {
     const cyc = topoKahnSteps({ edges: [{ u: 0, v: 1 }, { u: 1, v: 0 }], n: 2 })
     expect(last(cyc).narration).toContain('构成有向环')
     expect(last(cyc).narration).toContain('DS_ERROR')

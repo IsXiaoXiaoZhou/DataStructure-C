@@ -59,7 +59,7 @@ export function mstKruskalSteps(input: GraphBuildInput): Step[] {
     treeEdges.push(e)
     total += e.w
     steps.push(gframe(nodesView(), edgesView({ u: e.u, v: e.v }), aux(),
-      `尝试 ${e.u}-${e.v}（权 ${e.w}）：两端不同集（根 ${ru} / ${rv}）→ 按大小合并（大树挂小树方向：parent[${b}] = ${a}）→ 边入选，总权 ${total}，已收 ${treeEdges.length}/${n - 1}`))
+      `尝试 ${e.u}-${e.v}（权 ${e.w}）：两端不同集（根 ${ru} / ${rv}）→ 按大小合并（小树挂大树：parent[${b}] = ${a}，与源码"仅 size[ru] < size[rv] 才交换"一致）→ 边入选，总权 ${total}，已收 ${treeEdges.length}/${n - 1}`))
     if (treeEdges.length === n - 1) {
       steps.push(gframe(nodesView(), edgesView(), aux(),
         `Kruskal 完成：凑满 n-1 = ${n - 1} 条边即停（剩余候选边不必再看），总权 = ${total}——与 Prim 同权不同形是正常的（等权边时树形态可能不同）`))

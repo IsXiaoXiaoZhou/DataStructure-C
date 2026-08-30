@@ -80,7 +80,7 @@ export function doublyLinkedInsertSteps(input: DoublyLinkedInsertInput): Step[] 
   // ① node->prev = prev
   push(
     [...chain(dataSeq(), i => (i > 0 && i < pos ? 'done' : 'none'), { [prevId]: 'prev' }), { ...hover, prev: prevId, highlight: 'active' }],
-    `① node->prev = prev：新结点左腿踩上${pos === 1 ? '头结点' : `前驱 ${INIT[pos - 2]}`}}——此刻它仍悬在链外，只挂了一条腿`,
+    `① node->prev = prev：新结点左腿踩上${pos === 1 ? '头结点' : `前驱 ${INIT[pos - 2]}`}——此刻它仍悬在链外，只挂了一条腿`,
     [n + 1]
   )
 
@@ -95,9 +95,9 @@ export function doublyLinkedInsertSteps(input: DoublyLinkedInsertInput): Step[] 
   // ③ prev->next->prev = node（后继为 NULL 时 tail = node）
   if (succId != null) {
     push(
-      [...chain(dataSeq(), i => (i === pos ? 'active' : (i > 0 && i < pos ? 'done' : 'none')), { [succId]: '后继' }),
+      [...chain(dataSeq(), i => (i === pos ? 'active' : (i > 0 && i < pos ? 'done' : 'none')), { [succId]: '后继' }, { [succId]: NEW_ID }),
         { ...hover, prev: prevId, next: succId, highlight: 'active' }],
-      `③ prev->next->prev = node：后继 ${INIT[pos - 1]} 回指新结点——漏了这条回手，从后往前遍历到这就断了`,
+      `③ prev->next->prev = node：后继 ${INIT[pos - 1]} 的 prev 回指新结点（本帧已画出回指箭头）——漏了这条回手，从后往前遍历到这就断了`,
       [pos, n + 1]
     )
   } else {

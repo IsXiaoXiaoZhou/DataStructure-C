@@ -83,6 +83,36 @@ function visitOrder(steps: Step[], modeName: string): string[] {
     .map(m => m![1])
 }
 
+/** 红黑性质校验（rb.c rb_verify 口径）：根黑 / 无相邻红 / 每个结点左右子树黑高一致
+ *  （null 空叶算黑高 1）。修复动作的中间帧（如折线半旋后、染色前）天然短暂违反
+ *  性质④，故检查点取每个键插入的收尾帧（narration 含"根恒黑"）与结束帧。 */
+function expectRbValid(steps: Step[]) {
+  const checkpoints = steps.filter(s => s.narration.includes('根恒黑') || s.narration.startsWith('演示结束'))
+  expect(checkpoints.length, '红黑收尾检查点不足').toBeGreaterThanOrEqual(1)
+  checkpoints.forEach((s, ci) => {
+    const o = s.state as any
+    if (o.rootId == null) return
+    const byId = new Map<number, any>(o.nodes.map((n: any) => [n.id, n]))
+    const side = (id: number, which: 'L' | 'R'): number | null => {
+      const i = (byId.get(id)!.sides ?? []).indexOf(which)
+      return i >= 0 ? byId.get(id)!.children[i] : null
+    }
+    const colorOf = (id: number | null): 'R' | 'B' => (id == null ? 'B' : byId.get(id)!.color)
+    const viol: string[] = []
+    if (colorOf(o.rootId) !== 'B') viol.push('根非黑')
+    const bh = (id: number | null): number => {
+      if (id == null) return 1
+      const l = bh(side(id, 'L'))
+      const r = bh(side(id, 'R'))
+      if (l !== r) viol.push(`结点 ${id} 黑高不等(${l}/${r})`)
+      if (colorOf(id) === 'R' && (colorOf(side(id, 'L')) === 'R' || colorOf(side(id, 'R')) === 'R')) viol.push(`结点 ${id} 与红孩子相邻`)
+      return l + (colorOf(id) === 'B' ? 1 : 0)
+    }
+    bh(o.rootId)
+    expect(viol, `红黑检查点 ${ci} 违反性质：${viol.join('；')}`).toEqual([])
+  })
+}
+
 // ---------- 1. tree-storage-views ----------
 describe('treeStorageViews 生成器', () => {
   const input = { values: [1, 2, 3, 4, 5] }
@@ -225,7 +255,7 @@ describe('forestConvert 生成器', () => {
 // ---------- 6. huffman-build ----------
 describe('huffmanBuild 生成器', () => {
   const input = { weights: [5, 2, 9, 1, 7] }
-  it('终帧结构与 ht_build 一致：根 24 = 9+15；WPL = 44 逐叶累加', () => {
+  it('终帧结构与 ht_build 一致：根 24 = 9+15；WPL = 50 逐叶累加', () => {
     const steps = huffmanBuildSteps(input)
     const o = last(steps).state as any
     const byId = new Map(o.nodes.map((n: any) => [n.id, n]))
@@ -375,6 +405,43 @@ describe('rbInsert 生成器', () => {
     expect(byId.get(3).color).toBe('R')
     expect(byId.get(10).color).toBe('B')
     expectTreeContract(steps)
+  })
+  it('回归 20,10,30,5,7：LR 折线染黑半旋升位的折线点 7（rb.c:102-108 染 z->parent 而非旧父），终帧 20B(7B(5R,10R),30B)', () => {
+    const steps = rbInsertSteps({ keys: [20, 10, 30, 5, 7] })
+    const all = allNarration(steps)
+    expect(all).toContain('LR 折线')
+    expect(all).toContain('折线点 7 染黑、祖父 10 染红')
+    expect(all).not.toContain('父 5 染黑')   // 旧父保持红色：染黑对象是折线点，不是旧父
+    const fin = last(steps).state as any
+    const byId = new Map(fin.nodes.map((n: any) => [n.id, n]))
+    expect(fin.rootId).toBe(20)
+    expect(byId.get(7).color).toBe('B')
+    expect(byId.get(7).children).toEqual([5, 10])
+    expect(byId.get(5).color).toBe('R')
+    expect(byId.get(10).color).toBe('R')
+    expect(byId.get(30).color).toBe('B')
+    expect(all).toContain('rb_verify 通过')
+    expectRbValid(steps)
+    expectTreeContract(steps)
+  })
+  it('回归 20,30,10,35,33：RL 折线对称染黑折线点 33，终帧 20B(10B, 33B(30R,35R)) 性质成立', () => {
+    const steps = rbInsertSteps({ keys: [20, 30, 10, 35, 33] })
+    const all = allNarration(steps)
+    expect(all).toContain('RL 折线')
+    expect(all).toContain('折线点 33 染黑、祖父 30 染红')
+    const fin = last(steps).state as any
+    const byId = new Map(fin.nodes.map((n: any) => [n.id, n]))
+    expect(fin.rootId).toBe(20)
+    expect(byId.get(33).color).toBe('B')
+    expect(byId.get(33).children).toEqual([30, 35])
+    expect(byId.get(30).color).toBe('R')
+    expect(byId.get(35).color).toBe('R')
+    expectRbValid(steps)
+    expectTreeContract(steps)
+  })
+  it('既有直线/变色用例逐插入点红黑性质校验（expectRbValid 护栏覆盖 LL 直线与纯变色）', () => {
+    expectRbValid(rbInsertSteps({ keys: [10, 5, 15, 3, 1] }))
+    expectRbValid(rbInsertSteps({ keys: [10, 5, 20, 3] }))
   })
   it('纯函数', () => { expectPure(rbInsertSteps, { keys: [10, 5, 15, 3, 1] }) })
 })

@@ -863,7 +863,7 @@ export const registry: Record<string, VisualizerDef> = {
     }
   },
   'topo-kahn': {
-    title: '拓扑排序 Kahn（入度削减出队）', renderer: 'graph', steps: topoKahnSteps, defaultInput: '0->1,0->2,2->1,1->3,2->3|4',
+    title: '拓扑排序 Kahn（入度削减·每轮取最小编号）', renderer: 'graph', steps: topoKahnSteps, defaultInput: '0->1,0->2,2->1,1->3,2->3|4',
     parse: (text: string) => parseEdges(text, 2),
     validate: (input: any): string | null => {
       const ex = '0->1,0->2,2->1,1->3,2->3|4'

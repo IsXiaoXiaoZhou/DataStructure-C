@@ -3,7 +3,8 @@ import type { Step } from '../types'
 
 // 分块查找（对应 08_查找/03_分块查找 blk_search.c）
 // 语义：块间有序（前一块所有元素 < 后一块）、块内无序；
-// 先在索引表上逐块比 max_key 定块，再进块顺序扫
+// 阶段一在索引表上折半定块——对 max_key 数组做下界折半，找第一个 max_key >= key 的块
+// （blk_search.c：while (lo <= hi) { m = lo+(hi-lo)/2; … }）；阶段二进块顺序扫
 export interface BlockSearchInput { a: number[]; blockSize: number; key: number }
 
 export function blockSearchSteps(input: BlockSearchInput): Step[] {
@@ -18,21 +19,30 @@ export function blockSearchSteps(input: BlockSearchInput): Step[] {
     ({ state: { array: [...a], buckets: blocks.map(b => [...b]), bucketLabels: labels }, highlights, active, narration })
 
   const steps: Step[] = [frame(
-    `全表 ${n} 个元素分 ${blocks.length} 块（每块 ${blockSize} 个）：块间有序（前一块 max ${maxes[0]} < 后一块最小值）、块内无序；先查索引表定块，再进块顺序扫`)]
+    `全表 ${n} 个元素分 ${blocks.length} 块（每块 ${blockSize} 个）：块间有序（前一块 max ${maxes[0]} < 后一块最小值）、块内无序；先在索引表上折半定块（源码 blk_search 口径），再进块顺序扫`)]
 
-  // 阶段一：索引表定块
+  // 阶段一：索引折半定块（blk_search.c 的下界折半：找第一个 max_key >= key 的块）
   let bi = -1
-  for (let i = 0; i < blocks.length; i++) {
-    if (key > maxes[i]) {
-      steps.push(frame(
-        `key = ${key} > 块${i + 1} 的 max_key = ${maxes[i]} → 块${i + 1} 里全是 ≤ ${maxes[i]} 的数，不可能有 key，看下一块`,
-        [], [starts[i], starts[i] + blocks[i].length - 1]))
-    } else {
-      bi = i
-      steps.push(frame(
-        `key = ${key} ≤ 块${i + 1} 的 max_key = ${maxes[i]} → 目标只可能在块${i + 1}（若存在）；索引定块用 ${i + 1} 次比较`,
-        [], [starts[i], starts[i] + blocks[i].length - 1]))
-      break
+  let idxCmp = 0
+  {
+    let lo = 0
+    let hi = blocks.length - 1
+    while (lo <= hi) {
+      const m = lo + Math.floor((hi - lo) / 2)
+      idxCmp++
+      if (maxes[m] < key) {
+        steps.push(frame(
+          `索引折半第 ${idxCmp} 次：lo = ${lo}、hi = ${hi}、mid = ${m}，max_key = ${maxes[m]} < key = ${key} → 块${m + 1} 整块都 < ${key}，不可能有 key，丢掉左半：lo = ${m + 1}`,
+          [], [starts[m], starts[m] + blocks[m].length - 1]))
+        lo = m + 1
+      } else {
+        bi = m
+        steps.push(frame(
+          `索引折半第 ${idxCmp} 次：lo = ${lo}、hi = ${hi}、mid = ${m}，max_key = ${maxes[m]} ≥ key = ${key} → 块${m + 1} 可能装得下，记为候选，hi = ${m - 1} 继续向左压（要找的是第一个 max_key ≥ key 的块）`,
+          [], [starts[m], starts[m] + blocks[m].length - 1]))
+        if (m === 0) break
+        hi = m - 1
+      }
     }
   }
 
@@ -52,14 +62,14 @@ export function blockSearchSteps(input: BlockSearchInput): Step[] {
 
   if (found >= 0) {
     steps.push(frame(
-      `分块查找完成：索引 ${bi + 1} 次 + 块内 ${found - starts[bi] + 1} 次 = ${bi + 1 + found - starts[bi] + 1} 次比较；折中之美——比顺序查找快，比折半查找省"必须全有序"的要求`,
+      `分块查找完成：索引折半 ${idxCmp} 次 + 块内 ${found - starts[bi] + 1} 次 = ${idxCmp + found - starts[bi] + 1} 次比较；折中之美——比顺序查找快，比折半查找省"必须全有序"的要求`,
       [found], null))
   } else if (bi >= 0) {
     steps.push(frame(
-      `块${bi + 1} 扫完没有 ${key} → 未找到（块内无序，只能顺序扫到底）；失败代价 = 定块 ${bi + 1} 次 + 块长 ${blocks[bi].length} 次`))
+      `块${bi + 1} 扫完没有 ${key} → 未找到（块内无序，只能顺序扫到底）；失败代价 = 定块 ${idxCmp} 次 + 块长 ${blocks[bi].length} 次`))
   } else {
     steps.push(frame(
-      `key = ${key} 比所有块的 max_key 都大 → 未找到，索引表这一关就把它挡住了`))
+      `key = ${key} 比所有块的 max_key 都大（折半 ${idxCmp} 次后 lo > hi，候选块为空）→ 未找到，索引表这一关就把它挡住了`))
   }
   return steps
 }

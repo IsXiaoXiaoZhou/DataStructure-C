@@ -112,6 +112,14 @@ describe('dynaSeqGrow 生成器', () => {
     expect(all).toContain('new_data[3] = old_data[3]')
     expect(all).toContain('free')
   })
+  it('回归：realloc 语义与 seqlist_grow 一致——数据随扩容自动就位，不再宣称"数据不会自动跟过去/显式 free 旧块"', () => {
+    const steps = dynaSeqGrowSteps(input)
+    const all = steps.map(s => s.narration).join('\n')
+    expect(all).not.toContain('数据不会自动跟过去')
+    expect(all).not.toContain('free(old_data)')
+    expect(all).toContain('自动把原内容整体带过去')   // realloc 挪块自动保留原内容
+    expect(all).toContain('旧块由 realloc 自行回收')  // 释放是 realloc 的职责，非显式 free
+  })
   it('纯函数', () => { expectPure(dynaSeqGrowSteps, input) })
 })
 
@@ -137,6 +145,18 @@ describe('staticListCursor 生成器', () => {
     const all = steps.map(s => s.narration).join('\n')
     expect(all).toContain('沿 cur 走')
     expect(all).toContain('空闲分量 5')
+  })
+  it('回归：备用链收尾在 cur[8] = 0（源码 list_init 的 space[MAX-2].cur = 0），备用链永不触碰数据链头结点 9', () => {
+    for (const n of [1, 4, 7]) {
+      const steps = staticListCursorSteps({ list: Array.from({ length: n }, (_, i) => (i + 1) * 10), pos: 1, value: 99 })
+      const init = steps[0].state as number[]
+      expect(init[8], `n=${n} 备用链尾误接`).toBe(0)   // 修复前 cur[8] = 9（接进了数据链）
+      const freeChain: number[] = []
+      let p = init[0]
+      while (p !== 0 && freeChain.length < 10) { freeChain.push(p); p = init[p] }
+      expect(freeChain).not.toContain(9)               // 下标 9 是数据链头结点，永不入备用链
+      expect(freeChain.every(i => i >= n + 1 && i <= 8)).toBe(true)
+    }
   })
   it('纯函数', () => { expectPure(staticListCursorSteps, input) })
 })
@@ -307,6 +327,16 @@ describe('blockSearch 生成器', () => {
     expect(all).toContain('max_key')
     expect(all).toContain('块内')
   })
+  it('回归：定块与源码 blk_search.c 一致——索引折半（下界）而非逐块顺序比，比较次数口径随之修正', () => {
+    const steps = blockSearchSteps(input)
+    const all = steps.map(s => s.narration).join('\n')
+    expect(all).toContain('索引折半第 1 次')
+    expect(all).toContain('lo = ')
+    expect(all).toContain('第一个 max_key ≥ key 的块')
+    expect(all).not.toContain('逐块')
+    // 手算：lo=0,hi=2 → mid=1（25 ≥ 25 记候选）→ lo=0,hi=0 → mid=0（12 < 25 丢左半），索引共 2 次
+    expect(all).toContain('索引折半 2 次 + 块内 4 次 = 6 次')
+  })
   it('纯函数', () => { expectPure(blockSearchSteps, input) })
 })
 
@@ -328,6 +358,14 @@ describe('hashFuncMap 生成器', () => {
   it('每个关键字的 narration 给出 H(key) = key % p 算式', () => {
     const steps = hashFuncMapSteps(input)
     expect(steps.some(s => s.narration.includes('H(39) = 39 % 7 = 4'))).toBe(true)
+  })
+  it('回归：收尾同余例子按实际输入动态计算，不再硬编码默认数据的"12 和 33"', () => {
+    // keys=[1,2,3,4], p=3：桶 1 = [1,4] → 同余对是 1 和 4（修复前任何输入都印"12 和 33 同余"）
+    const steps = hashFuncMapSteps({ keys: [1, 2, 3, 4], p: 3 })
+    expect(last(steps).narration).toContain('1 和 4 同余（都余 1）')
+    expect(last(steps).narration).not.toContain('12 和 33')
+    const plain = hashFuncMapSteps({ keys: [1, 2, 3], p: 5 })
+    expect(last(plain).narration).not.toContain('同余（都余')   // 无撞桶输入不再硬凑例子
   })
   it('纯函数', () => { expectPure(hashFuncMapSteps, input) })
 })
@@ -353,6 +391,20 @@ describe('hashOpenProbe 生成器', () => {
     const all = steps.map(s => s.narration).join('\n')
     expect(all).toContain('H₀(39) = 39 % 7 = 4')
     expect(all).toContain('落位')
+  })
+  it('回归：p=5（4k+1 型素数）keys=[0,1,2,6] 在有限帧内以 DS_OVERFLOW"散列表已满"收尾，不再死循环', () => {
+    // 修复前：探测循环无上界，此合法输入的 ±i² 序列只在 {h0±1} 两个槽打转，
+    // steps() 无限产帧直至内存耗尽（页面挂死）
+    const steps = hashOpenProbeSteps({ keys: [0, 1, 2, 6], p: 5 })
+    expect(steps.length, '帧数必须有界（探测 ≤ 表长 m 次）').toBeLessThan(60)
+    const fin = last(steps)
+    expect(fin.narration).toContain('DS_OVERFLOW')
+    expect(fin.narration).toContain('散列表已满')
+    const o = fin.state as any
+    expect(o.buckets[0]).toEqual([0])
+    expect(o.buckets[1]).toEqual([1])
+    expect(o.buckets[2]).toEqual([2])
+    expect(o.buckets.flat()).not.toContain(6)   // 探测穷尽未入表
   })
   it('纯函数', () => { expectPure(hashOpenProbeSteps, input) })
 })

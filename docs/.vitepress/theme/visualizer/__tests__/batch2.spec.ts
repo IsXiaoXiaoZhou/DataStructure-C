@@ -154,6 +154,15 @@ describe('doublyLinkedInsert 生成器', () => {
     expect(allNarration(steps)).toContain('tail 改指新结点')
     expect(chainValues(last(steps).state as any)).toEqual([12, 25, 33, 47, 58, 99])
   })
+  it('回归：① 帧叙述无多余字符；③ 帧画面给出后继 prev → 新结点的回指箭头', () => {
+    const mid = doublyLinkedInsertSteps({ pos: 3, value: 40 })
+    expect(allNarration(mid)).not.toContain('25}')      // 修复前 ① 帧 narration 多印一个 }
+    const f3 = mid.find(s => s.narration.includes('③ prev->next->prev'))!
+    const succ = (f3.state as any).nodes.find((nd: any) => nd.id === 3)  // 原后继 33
+    expect(succ.prev).toBe(100)                          // 本帧后继 prev 已回指新结点（NEW_ID）
+    const head = doublyLinkedInsertSteps({ pos: 1, value: 40 })
+    expect(allNarration(head)).not.toContain('头结点}')  // pos=1 同样不带多余 }
+  })
   it('纯函数', () => { expectPure(doublyLinkedInsertSteps, input) })
 })
 

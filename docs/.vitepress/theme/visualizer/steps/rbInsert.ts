@@ -5,7 +5,9 @@ import { tstep, bin } from './treeKit'
 // 红黑树插入（对应 08_查找/06_红黑树/rb.c rb_insert + insert_fixup，CLRS 风格）：
 //   新结点染红挂叶（不破坏黑高）；父红即破性质4，修复循环：
 //     叔叔红 → 变色上推（父叔变黑、祖父变红，检查点上移到祖父）；
-//     叔叔黑 → LR/RL 折线先旋成直线，再父染黑、祖父染红、单旋；
+//     叔叔黑 → LR/RL 折线先半旋拉直，再染黑半旋升位的折线点（rb.c:102-108 折叠后
+//              z->parent 恰是折线点，染黑的是它而非旧父）、祖父染红、单旋；
+//              直线分支则父染黑；
 //   循环出口 z 到根或父已黑；最后根恒黑（性质2）。
 // 输入插入串（4~8 个键；4 个不同键必产生至少一次修复动作——validate 保证）。
 export interface RbInput { keys: number[] }
@@ -82,17 +84,20 @@ export function rbInsertSteps(input: RbInput): Step[] {
     else pn.r = newChild
   }
 
-  /** 叔黑直线分支：父染黑、祖父染红、对 g 单旋（dirRight=true 右旋 LL / false 左旋 RR） */
-  const fixStraight = (p: number, g: number, dirRight: boolean, fromFold: boolean) => {
+  /** 叔黑直线分支：对 g 单旋（dirRight=true 右旋 LL / false 左旋 RR）。
+   *  black = 被染黑者：直线分支为父 p；折线分支（fromFold）为半旋升位的折线点
+   *  （rb.c:102-108 折叠后 z->parent 即折线点，染黑的是它——旧父保持红色） */
+  const fixStraight = (black: number, g: number, dirRight: boolean, fromFold: boolean) => {
     const gp = parentOf(g) // 必须在旋转前捕获：旋转让 g 的双亲指针指向新根
     const nr = dirRight ? rotRight(g) : rotLeft(g)
-    nodes.get(p)!.color = 'B'
+    nodes.get(black)!.color = 'B'
     nodes.get(g)!.color = 'R'
     attach(gp, g, nr)
     const form = dirRight ? 'LL' : 'RR'
     const rotName = dirRight ? '右旋' : '左旋'
-    frame(`${form} 直线：父 ${p} 染黑、祖父 ${g} 染红、${rotName} ${g} —— ${p} 升为子树根，红红冲突就地化解${fromFold ? '（折线半旋后走的就是这条直线分支）' : '（叔黑分支：一次单旋终结，z 的新父已黑）'}`,
-      '叔黑分支：父染黑补回该侧黑高，祖父染红再把黑高差转嫁给旋转', { act: p, labels: { [p]: '新根·黑', [g]: '降位·红' } })
+    const role = fromFold ? '折线点' : '父'
+    frame(`${form} 直线：${role} ${black} 染黑、祖父 ${g} 染红、${rotName} ${g} —— ${black} 升为子树根，红红冲突就地化解${fromFold ? '（折线半旋后走的就是这条直线分支，rb.c 染黑的是半旋升位的折线点而非旧父）' : '（叔黑分支：一次单旋终结，z 的新父已黑）'}`,
+      '叔黑分支：染黑补回该侧黑高，祖父染红再把黑高差转嫁给旋转', { act: black, labels: { [black]: '新根·黑', [g]: '降位·红' } })
     return nr
   }
 
@@ -151,20 +156,18 @@ export function rbInsertSteps(input: RbInput): Step[] {
           { act: z, labels: { [z]: '折线点', [p]: '半旋支点' } })
         const np = rotLeft(p)
         attach(g, p, np)
-        z = p
-        frame(`半旋完成：${np} 升为 ${g} 的左孩子，${z} 成为其左孩子——折线已成 LL 直线`,
-          undefined, { act: z, path: pathTo(z) })
-        fixStraight(z, g, true, true)
+        frame(`半旋完成：${np} 升为 ${g} 的左孩子，${p} 成为其左孩子——折线已成 LL 直线`,
+          undefined, { act: p, path: pathTo(p) })
+        fixStraight(np, g, true, true) // 染黑折线点 np（rb.c:102-108：折叠后 z->parent 即 np）
       } else if (!pIsLeft && zIsLeft) {
         frame(`${z} 是父 ${p} 的左孩子、${p} 是祖父 ${g} 的右孩子 → RL 折线：先对 ${p} 右旋成 RR 直线`,
           '折线分支：先半旋拉直，再按直线处理',
           { act: z, labels: { [z]: '折线点', [p]: '半旋支点' } })
         const np = rotRight(p)
         attach(g, p, np)
-        z = p
-        frame(`半旋完成：${np} 升为 ${g} 的右孩子，${z} 成为其右孩子——折线已成 RR 直线`,
-          undefined, { act: z, path: pathTo(z) })
-        fixStraight(z, g, false, true)
+        frame(`半旋完成：${np} 升为 ${g} 的右孩子，${p} 成为其右孩子——折线已成 RR 直线`,
+          undefined, { act: p, path: pathTo(p) })
+        fixStraight(np, g, false, true) // 染黑折线点 np（rb.c:118-124 同理）
       } else if (pIsLeft && zIsLeft) {
         fixStraight(p, g, true, false)
       } else {

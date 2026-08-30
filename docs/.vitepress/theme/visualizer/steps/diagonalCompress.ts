@@ -23,8 +23,12 @@ export function diagonalCompressSteps(input: number[]): Step[] {
       const k = 2 * i + j - 3
       data[k] = v
       rows[i - 1].push(v)
+      // 3i-4（前 i-1 行个数）仅对 i ≥ 2 成立；第 1 行之前没有行、行内从 a(1,1) 起存
+      const prevNote = i === 1
+        ? `第 1 行之前没有行（前面共 0 个），行内偏移 ${j}−1`
+        : `前 ${i - 1} 行共 ${3 * i - 4} 个，行内偏移 ${j}−(${i - 1})`
       steps.push(frame(
-        `a(${i},${j}) = ${v}：k = 2×${i} + ${j} − 3 = ${k}，放入 data[${k}]（前 ${i - 1} 行共 ${3 * i - 4} 个，行内偏移 ${j}−(${i - 1})）`,
+        `a(${i},${j}) = ${v}：k = 2×${i} + ${j} − 3 = ${k}，放入 data[${k}]（${prevNote}）`,
         [k], [k, k]))
     }
   }
