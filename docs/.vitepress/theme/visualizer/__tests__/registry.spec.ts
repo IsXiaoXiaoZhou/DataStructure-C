@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { registry } from '../registry'
 
 describe('registry 输入校验', () => {
-  it('九个算法注册齐全且 defaultInput 均通过自身校验', () => {
+  it('全部算法（9 排序 + 16 批1）注册齐全且 defaultInput 均通过自身校验', () => {
     const keys = Object.keys(registry)
-    expect(keys).toHaveLength(9)
+    expect(keys).toHaveLength(25)
     for (const k of keys) {
       const def = registry[k]
       const parsed = def.parse(def.defaultInput)
