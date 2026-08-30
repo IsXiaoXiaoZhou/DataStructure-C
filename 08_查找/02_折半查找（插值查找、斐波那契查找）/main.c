@@ -37,7 +37,6 @@ int main(void)
     enum { MAXN = 800 };
     int a[MAXN];
     size_t pos = 0;
-    size_t i = 0;
 
     printf("===== 折半查找（折半 / 插值 / 斐波那契） =====\n");
 
