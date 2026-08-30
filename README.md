@@ -3,9 +3,18 @@
 基于严蔚敏《数据结构（C语言版）》/王道教材体系，按 C 语言工程规范实现的
 60 个数据结构模块。每个模块完全独立、自包含，可单独编译运行。
 
-## 🖥️ 教程站点（本地预览）
+## 教程站点
 
-本项目配有 VitePress 教程站：60 个模块的讲解、源码展示与排序算法动画。
+站点在 docs 目录下，基于 VitePress 构建静态页面，包含各模块讲解、源码和排序算法动画。
+
+```bash
+cd docs && npm install
+npm run docs:dev      # 本地预览 http://localhost:5173
+```
+
+线上地址 https://isxiaoxiaozhou.github.io/DataStructure-C/ ，推送到 main 后自动重新部署。
+
+其他命令：docs:build 构建静态页，test 跑动画步骤单测，check 检查讲解页完整性，gen:pages 生成新模块骨架页，verify 逐页校验。命令都在 docs 目录下执行。
 
 ```bash
 cd docs && npm install
