@@ -107,7 +107,8 @@ DsResult infix_to_postfix(const char *infix, char *postfix)
         if (ch == '+' || ch == '-' || ch == '*' || ch == '/') {
             /*
              * 左结合规则：栈顶优先级 >= 当前运算符时必须先弹后压，
-             * 否则 "5-3+2" 会算成 5-(3+2)=4 而不是正确的 4
+             * 否则少弹一个，"5-3+2" 会被转成 5 3 2 + -，
+             * 算出 5-(3+2)=0，而正确答案是 4
              */
             while (op_top >= 0 && prec_of(op_stack[op_top]) >= prec_of(ch)) {
                 if (out_pos >= POSTFIX_CAP) {
