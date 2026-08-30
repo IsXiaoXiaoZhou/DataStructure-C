@@ -53,7 +53,9 @@ nextval 是在 next 上的第二次打磨。跳到 next[j] 之后，拿去跟主
 
 ## 动画演示
 
-<!-- 本模块暂未挂载动画（基建已就绪，后续批次接入） <Visualizer algorithm="..." /> -->
+分两幕：先看 kmp_get_next 自匹配算出 next 表（本实现 1-based、next[1]=0，锚点自查 next[2]=1），再看 kmp_index 匹配——主串 i 从头到尾不回退，失配时 j 沿 next[j+1] 跳，前缀已匹配的字符免比。和上面 BF 同一组输入各跑一遍，比较次数立见高下。输入 `主串|模式串`（主串 ≤14、模式 ≤5，如 `ababcabcacbab|abcac`）：
+
+<Visualizer algorithm="kmp-match" />
 
 ## 易错点 / 考点
 

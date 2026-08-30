@@ -453,7 +453,7 @@ describe('registry 批3 新增键', () => {
       expect(def.renderer, `${k} renderer`).toBe('tree')
       expect(def.validate(def.parse(def.defaultInput))).toBeNull()
     }
-    expect(Object.keys(registry)).toHaveLength(47)
+    expect(Object.keys(registry)).toHaveLength(62)
   })
   it('全链路：defaultInput 经 parse→validate→steps 产出有效帧（PlayerShell 同款调用序）', () => {
     for (const k of B3_KEYS) {

@@ -447,7 +447,7 @@ describe('registry 批1 新增键', () => {
       expect(def, `缺键 ${k}`).toBeTruthy()
       expect(def.validate(def.parse(def.defaultInput))).toBeNull()
     }
-    expect(Object.keys(registry)).toHaveLength(47)  // 25 批1 + 10 批2 + 12 批3
+    expect(Object.keys(registry)).toHaveLength(62)  // 25 批1 + 10 批2 + 12 批3 + 15 批4
   })
   it('全链路：defaultInput 经 parse→validate→steps 产出有效帧（防 parse/steps 形状脱节）', () => {
     for (const k of NEW_KEYS) {

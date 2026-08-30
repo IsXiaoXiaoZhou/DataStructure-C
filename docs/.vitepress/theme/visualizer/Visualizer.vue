@@ -7,12 +7,14 @@ import ArrayBar from './renderers/ArrayBar.vue'
 import StackQueue from './renderers/StackQueue.vue'
 import ListNode from './renderers/ListNode.vue'
 import Tree from './renderers/Tree.vue'
+import StringView from './renderers/String.vue'
+import GraphView from './renderers/Graph.vue'
 import type { RendererKind } from './types'
 
 const props = defineProps<{ algorithm: string }>()
 const def = computed(() => registry[props.algorithm])
 
-const RENDERERS: Record<RendererKind, unknown> = { arrayBar: ArrayBar, stackQueue: StackQueue, listNode: ListNode, tree: Tree }
+const RENDERERS: Record<RendererKind, unknown> = { arrayBar: ArrayBar, stackQueue: StackQueue, listNode: ListNode, tree: Tree, string: StringView, graph: GraphView }
 const rendererComp = computed(() => (def.value ? RENDERERS[def.value.renderer] ?? ArrayBar : ArrayBar))
 </script>
 

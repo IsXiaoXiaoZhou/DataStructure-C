@@ -51,6 +51,22 @@ import { rbInsertSteps } from './steps/rbInsert'
 import { btreeSplitSteps } from './steps/btreeSplit'
 import { bplusInsertSteps } from './steps/bplusInsert'
 import { preNullBuild } from './steps/treeKit'
+// 批4：串 / 图存储与算法 / 外排（String / Graph 双渲染器）
+import { stringStaticAssignSteps } from './steps/stringStaticAssign'
+import { heapStringGrowSteps } from './steps/heapStringGrow'
+import { blockStringChunkSteps } from './steps/blockStringChunk'
+import { bfMatchSteps } from './steps/bfMatch'
+import { kmpMatchSteps } from './steps/kmpMatch'
+import { adjlistBuildSteps } from './steps/adjlistBuild'
+import { orthlistBuildSteps } from './steps/orthlistBuild'
+import { amlBuildSteps } from './steps/amlBuild'
+import { mstPrimSteps } from './steps/mstPrim'
+import { mstKruskalSteps } from './steps/mstKruskal'
+import { spDijkstraSteps } from './steps/spDijkstra'
+import { topoKahnSteps } from './steps/topoKahn'
+import { externalMergeSteps } from './steps/externalMerge'
+import { cpCriticalPathSteps } from './steps/cpCriticalPath'
+import { crosslistSparseSteps } from './steps/crosslistSparse'
 
 function numberList(min: number, max: number, maxLen: number) {
   return {
@@ -134,6 +150,60 @@ function tokenErr(tokens: string[], ex: string): string | null {
 /** level 模式：不允许 # */
 function levelTokenErr(tokens: string[], ex: string): string | null {
   if (tokens.some(t => t === '#')) return ERR('level 模式输入层序数据，不带空标记 #', ex)
+  return null
+}
+
+// ---------- 批4 通用 parse/validate 小工具（串 / 图 / 外排） ----------
+/** 边词元："u-v"、"u->v"、"u-v:w"、"u->v:w"（'->' 与 '-' 同义收下，方向语义由各动画说明） */
+function edgeTok(s: string): { u: number; v: number; w?: number } | null {
+  const m = /^(\d+)(?:->|-)(\d+)(?::(\d+))?$/.exec(s)
+  return m ? { u: Number(m[1]), v: Number(m[2]), ...(m[3] !== undefined ? { w: Number(m[3]) } : {}) } : null
+}
+/** "边串|顶点数[|源点]" 解析；看不懂的词元变成 NaN 边交给 validate 拒绝 */
+function parseEdges(text: string, segCount: 2 | 3) {
+  const parts = segs(text, segCount)
+  if (!parts) return { parts: null as string[] | null, edges: [] as { u: number; v: number; w?: number }[], n: NaN, src: NaN }
+  const edges = parts[0].split(/[,，\s]+/).filter(Boolean).map(edgeTok).map(t => t ?? { u: NaN, v: NaN })
+  return { parts, edges, n: Number(parts[1]), src: segCount === 3 ? Number(parts[2]) : NaN }
+}
+/** 无向边串通用校验（范围/自环/重复），directed 时按键 "u->v" 判重 */
+function edgesErr(edges: { u: number; v: number }[], n: number, maxEdges: number, directed: boolean, ex: string): string | null {
+  if (edges.length < 1 || edges.length > maxEdges) return ERR(`边需 1~${maxEdges} 条`, ex)
+  if (edges.some(e => !Number.isInteger(e.u) || !Number.isInteger(e.v))) return ERR('边需为"u-v"（或"u->v"）两个整数', ex)
+  if (edges.some(e => e.u < 0 || e.u >= n || e.v < 0 || e.v >= n || e.u === e.v)) return ERR(`顶点号需在 0~${n - 1} 且 u≠v`, ex)
+  const seen = new Set<string>()
+  for (const e of edges) {
+    const key = directed ? `${e.u}->${e.v}` : ukeyOf(e.u, e.v)
+    if (seen.has(key)) return ERR('存在重复边', ex)
+    seen.add(key)
+  }
+  return null
+}
+const ukeyOf = (u: number, v: number) => (u <= v ? `${u}-${v}` : `${v}-${u}`)
+/** 带权边校验：权值必须给出且为 min~99 的整数（"u-v:w"） */
+function weightErr(edges: { w?: number }[], ex: string, min = 1): string | null {
+  if (edges.some(e => e.w === undefined || !Number.isInteger(e.w))) return ERR('边需带权："u-v:w"（如 0-1:4）', ex)
+  if (edges.some(e => (e.w as number) < min || (e.w as number) > 99)) return ERR(`权值需为 ${min}~99 的整数`, ex)
+  return null
+}
+/** Kahn 判环：能完整出队 n 个则无环（拓扑排序 / AOE 前置校验共用） */
+function hasCycle(edges: { u: number; v: number }[], n: number): boolean {
+  const indeg = Array.from({ length: n }, () => 0)
+  for (const e of edges) indeg[e.v]++
+  const q: number[] = []
+  for (let i = 0; i < n; i++) if (indeg[i] === 0) q.push(i)
+  let seen = 0
+  while (q.length) {
+    const u = q.shift() as number
+    seen++
+    for (const e of edges) if (e.u === u && --indeg[e.v] === 0) q.push(e.v)
+  }
+  return seen < n
+}
+/** 源串校验：可见字符、无空白无 |（| 是分隔符）、限长 */
+function srcStrErr(s: string, min: number, max: number, ex: string): string | null {
+  if (!s || s.length < min || s.length > max) return ERR(min === 1 ? `源串需 1~${max} 个字符` : `源串需 ${min}~${max} 个字符${min > 1 ? `（≤${min - 1} 触发不了本动画的演示点）` : ''}`, ex)
+  if (/[\s|]/.test(s)) return ERR('源串不能含空白与 |（| 是输入分隔符）', ex)
   return null
 }
 
@@ -653,9 +723,228 @@ export const registry: Record<string, VisualizerDef> = {
     validate: (input: unknown): string | null => {
       const a = input as number[]
       const ex = '10,20,30,40,50,60,70,80,90,15'
-      if (!Array.isArray(a) || a.length < 5 || a.length > 14) return ERR('需 5~14 个键（本实现 t=3：结点上界 2t=6 键，第 6 键触发叶分裂）', ex)
+      if (a.length < 5 || a.length > 14) return ERR('需 5~14 个键（本实现 t=3：结点上界 2t=6 键，第 6 键触发叶分裂）', ex)
       if (a.some(v => !Number.isInteger(v) || v < 1 || v > 999)) return ERR('键需为 1~999 的整数', ex)
       return uniqErr(a, '键', ex)
+    }
+  },
+
+  // ---------- 批4：05_串（String 渲染器） ----------
+  'string-static-assign': {
+    title: '定长顺序串赋值（逐字符拷入 + 超长报错）', renderer: 'string', steps: stringStaticAssignSteps, defaultInput: 'ababcabc',
+    parse: (text: string) => ({ src: text.trim() }),
+    validate: (input: unknown): string | null => {
+      const { src } = input as { src: string }
+      const ex = 'ababcabc'
+      const err = srcStrErr(src, 1, 12, ex)
+      if (err) return err
+      return null
+    }
+  },
+  'heap-string-grow': {
+    title: '堆分配串动态扩容（满 → 搬家 → free 旧块）', renderer: 'string', steps: heapStringGrowSteps, defaultInput: 'abcdefgh',
+    parse: (text: string) => ({ src: text.trim() }),
+    validate: (input: unknown): string | null => {
+      const { src } = input as { src: string }
+      return srcStrErr(src, 5, 8, 'abcdefgh')
+    }
+  },
+  'block-string-chunk': {
+    title: '块链串分块存储（CHUNK_SIZE=4 结块）', renderer: 'string', steps: blockStringChunkSteps, defaultInput: 'ababcabcasd',
+    parse: (text: string) => ({ src: text.trim() }),
+    validate: (input: unknown): string | null => {
+      const { src } = input as { src: string }
+      return srcStrErr(src, 1, 12, 'ababcabcasd')
+    }
+  },
+  'bf-match': {
+    title: '朴素模式匹配 BF（失配回退 i-j+2）', renderer: 'string', steps: bfMatchSteps, defaultInput: 'ababcabcacbab|abcac',
+    parse: (text: string) => {
+      const parts = segs(text, 2)
+      return { parts: parts ?? null, s: parts ? parts[0] : '', t: parts ? parts[1] : '' }
+    },
+    validate: (input: unknown): string | null => {
+      const { parts, s, t } = input as { parts: string[] | null; s: string; t: string }
+      const ex = 'ababcabcacbab|abcac'
+      if (!parts) return ERR('格式：主串|模式串（用 | 分两段）', ex)
+      const se = srcStrErr(s, 1, 14, ex)
+      if (se) return se.replace('源串', '主串')
+      const te = srcStrErr(t, 1, 5, ex)
+      if (te) return te.replace('源串', '模式串')
+      if (t.length > s.length) return ERR('模式串不能长于主串（否则一次都比对不齐）', ex)
+      return null
+    }
+  },
+  'kmp-match': {
+    title: 'KMP 模式匹配（next 表 + i 不回退）', renderer: 'string', steps: kmpMatchSteps, defaultInput: 'ababcabcacbab|abcac',
+    parse: (text: string) => {
+      const parts = segs(text, 2)
+      return { parts: parts ?? null, s: parts ? parts[0] : '', t: parts ? parts[1] : '' }
+    },
+    validate: (input: unknown): string | null => {
+      const { parts, s, t } = input as { parts: string[] | null; s: string; t: string }
+      const ex = 'ababcabcacbab|abcac'
+      if (!parts) return ERR('格式：主串|模式串（用 | 分两段）', ex)
+      const se = srcStrErr(s, 1, 14, ex)
+      if (se) return se.replace('源串', '主串')
+      const te = srcStrErr(t, 1, 5, ex)
+      if (te) return te.replace('源串', '模式串')
+      if (t.length > s.length) return ERR('模式串不能长于主串（否则一次都比对不齐）', ex)
+      return null
+    }
+  },
+
+  // ---------- 批4：07_图（Graph 渲染器，环状/分层布局由生成器给定） ----------
+  'adjlist-build': {
+    title: '邻接表建图（每边对称挂两个弧结点）', renderer: 'graph', steps: adjlistBuildSteps, defaultInput: '0-1,1-2,2-3,0-3|4',
+    parse: (text: string) => parseEdges(text, 2),
+    validate: (input: any): string | null => {
+      const ex = '0-1,1-2,2-3,0-3|4'
+      if (!input.parts) return ERR('格式："u-v"边串|顶点数', ex)
+      if (!Number.isInteger(input.n) || input.n < 2 || input.n > 8) return ERR('顶点数需为 2~8 的整数', ex)
+      return edgesErr(input.edges, input.n, 12, false, ex)
+    }
+  },
+  'orthlist-build': {
+    title: '十字链表建图（一弧一结点挂出/入双链）', renderer: 'graph', steps: orthlistBuildSteps, defaultInput: '0->1,1->2,2->0,1->3|4',
+    parse: (text: string) => parseEdges(text, 2),
+    validate: (input: any): string | null => {
+      const ex = '0->1,1->2,2->0,1->3|4'
+      if (!input.parts) return ERR('格式："u->v"有向弧串|顶点数', ex)
+      if (!Number.isInteger(input.n) || input.n < 2 || input.n > 8) return ERR('顶点数需为 2~8 的整数', ex)
+      return edgesErr(input.edges, input.n, 10, true, ex)
+    }
+  },
+  'amledg-build': {
+    title: '邻接多重表建图（每边一结点两端串接）', renderer: 'graph', steps: amlBuildSteps, defaultInput: '0-1,1-2,2-3,0-2|4',
+    parse: (text: string) => parseEdges(text, 2),
+    validate: (input: any): string | null => {
+      const ex = '0-1,1-2,2-3,0-2|4'
+      if (!input.parts) return ERR('格式："u-v"边串|顶点数', ex)
+      if (!Number.isInteger(input.n) || input.n < 2 || input.n > 8) return ERR('顶点数需为 2~8 的整数', ex)
+      return edgesErr(input.edges, input.n, 10, false, ex)
+    }
+  },
+  'mst-prim': {
+    title: 'Prim 最小生成树（横切最小边入树）', renderer: 'graph', steps: mstPrimSteps, defaultInput: '0-1:4,0-2:1,2-1:2,1-3:5,2-3:8|4',
+    parse: (text: string) => parseEdges(text, 2),
+    validate: (input: any): string | null => {
+      const ex = '0-1:4,0-2:1,2-1:2,1-3:5,2-3:8|4'
+      if (!input.parts) return ERR('格式："u-v:w"带权边串|顶点数（无向图）', ex)
+      if (!Number.isInteger(input.n) || input.n < 2 || input.n > 8) return ERR('顶点数需为 2~8 的整数', ex)
+      const werr = weightErr(input.edges, ex)
+      if (werr) return werr
+      return edgesErr(input.edges, input.n, 12, false, ex)
+    }
+  },
+  'mst-kruskal': {
+    title: 'Kruskal 最小生成树（排序 + 并查集判环）', renderer: 'graph', steps: mstKruskalSteps, defaultInput: '0-1:1,1-2:2,0-2:3,1-3:4,2-3:5|4',
+    parse: (text: string) => parseEdges(text, 2),
+    validate: (input: any): string | null => {
+      const ex = '0-1:1,1-2:2,0-2:3,1-3:4,2-3:5|4'
+      if (!input.parts) return ERR('格式："u-v:w"带权边串|顶点数（无向图）', ex)
+      if (!Number.isInteger(input.n) || input.n < 2 || input.n > 8) return ERR('顶点数需为 2~8 的整数', ex)
+      const werr = weightErr(input.edges, ex)
+      if (werr) return werr
+      return edgesErr(input.edges, input.n, 12, false, ex)
+    }
+  },
+  'sp-dijkstra': {
+    title: 'Dijkstra 最短路径（dist 最小定入 + 松弛）', renderer: 'graph', steps: spDijkstraSteps, defaultInput: '0-1:4,0-2:1,2-1:2,1-3:5,2-3:8|4|0',
+    parse: (text: string) => parseEdges(text, 3),
+    validate: (input: any): string | null => {
+      const ex = '0-1:4,0-2:1,2-1:2,1-3:5,2-3:8|4|0'
+      if (!input.parts) return ERR('格式："u->v:w"弧串|顶点数|源点（有向网）', ex)
+      if (!Number.isInteger(input.n) || input.n < 2 || input.n > 8) return ERR('顶点数需为 2~8 的整数', ex)
+      if (!Number.isInteger(input.src) || input.src < 0 || input.src >= input.n) return ERR(`源点需为 0~${input.n - 1} 的整数`, ex)
+      const werr = weightErr(input.edges, ex)
+      if (werr) return werr
+      return edgesErr(input.edges, input.n, 14, true, ex)
+    }
+  },
+  'topo-kahn': {
+    title: '拓扑排序 Kahn（入度削减出队）', renderer: 'graph', steps: topoKahnSteps, defaultInput: '0->1,0->2,2->1,1->3,2->3|4',
+    parse: (text: string) => parseEdges(text, 2),
+    validate: (input: any): string | null => {
+      const ex = '0->1,0->2,2->1,1->3,2->3|4'
+      if (!input.parts) return ERR('格式："u->v"有向弧串|顶点数（需为 DAG）', ex)
+      if (!Number.isInteger(input.n) || input.n < 2 || input.n > 8) return ERR('顶点数需为 2~8 的整数', ex)
+      const err = edgesErr(input.edges, input.n, 12, true, ex)
+      if (err) return err
+      if (hasCycle(input.edges, input.n)) return ERR('该有向图存在环——拓扑排序要求 DAG，试着去掉构成环的那条弧', ex)
+      return null
+    }
+  },
+  'cp-critical-path': {
+    title: '关键路径（AOE 网 ve/vl 正逆推）', renderer: 'graph', steps: cpCriticalPathSteps, defaultInput: '0->1:3,0->2:2,1->3:2,2->3:4,3->4:2,3->5:3,4->5:1|6',
+    parse: (text: string) => parseEdges(text, 2),
+    validate: (input: any): string | null => {
+      const ex = '0->1:3,0->2:2,1->3:2,2->3:4,3->4:2,3->5:3,4->5:1|6'
+      if (!input.parts) return ERR('格式："u->v:w"活动弧串|顶点数（AOE 网，须单源单汇无环）', ex)
+      if (!Number.isInteger(input.n) || input.n < 2 || input.n > 8) return ERR('顶点数需为 2~8 的整数', ex)
+      const werr = weightErr(input.edges, ex, 1)
+      if (werr) return werr
+      const err = edgesErr(input.edges, input.n, 12, true, ex)
+      if (err) return err
+      if (hasCycle(input.edges, input.n)) return ERR('AOE 网不允许成环（工程排不出工期），去掉构成环的弧', ex)
+      const indeg = Array.from({ length: input.n }, () => 0)
+      const outdeg = Array.from({ length: input.n }, () => 0)
+      for (const e of input.edges) { indeg[e.v]++; outdeg[e.u]++ }
+      const srcs = indeg.filter((d: number) => d === 0).length
+      const dsts = outdeg.filter((d: number) => d === 0).length
+      if (srcs !== 1 || dsts !== 1) return ERR(`源点（入度 0）与汇点（出度 0）各须恰 1 个，当前 ${srcs}/${dsts} 个`, ex)
+      return null
+    }
+  },
+  'crosslist-sparse': {
+    title: '稀疏矩阵十字链表（行链列链双有序）', renderer: 'graph', steps: crosslistSparseSteps, defaultInput: '0-1:5,0-3:2,2-1:4|3|4',
+    parse: (text: string) => {
+      const parts = segs(text, 3)
+      if (!parts) return { parts: null as string[] | null, cells: [] as { i: number; j: number; v: number }[], rows: NaN, cols: NaN }
+      const cells = parts[0].split(/[,，\s]+/).filter(Boolean).map(edgeTok).map(t => t ?? { u: NaN, v: NaN, w: NaN })
+        .map(t => ({ i: t.u, j: t.v, v: t.w as number }))
+      return { parts, cells, rows: Number(parts[1]), cols: Number(parts[2]) }
+    },
+    validate: (input: any): string | null => {
+      const ex = '0-1:5,0-3:2,2-1:4|3|4'
+      if (!input.parts) return ERR('格式："行-列:值"串|行数|列数', ex)
+      const { cells, rows, cols } = input
+      if (!Number.isInteger(rows) || rows < 2 || rows > 5) return ERR('行数需为 2~5 的整数', ex)
+      if (!Number.isInteger(cols) || cols < 2 || cols > 5) return ERR('列数需为 2~5 的整数', ex)
+      if (cells.length < 1 || cells.length > 8) return ERR('非零元需 1~8 个', ex)
+      if (cells.some((c: any) => !Number.isInteger(c.i) || !Number.isInteger(c.j) || !Number.isInteger(c.v))) return ERR('非零元需为"行-列:值"三个整数', ex)
+      if (cells.some((c: any) => c.i < 0 || c.i >= rows || c.j < 0 || c.j >= cols)) return ERR(`行号 0~${rows - 1}、列号 0~${cols - 1}`, ex)
+      if (cells.some((c: any) => c.v === 0)) return ERR('非零元的值不能为 0（零元不入链）', ex)
+      const seen = new Set<string>()
+      for (const c of cells) {
+        const key = `${c.i}-${c.j}`
+        if (seen.has(key)) return ERR('同一位置重复设置', ex)
+        seen.add(key)
+      }
+      return null
+    }
+  },
+
+  // ---------- 批4：09_排序/外部排序（String 渲染器多行） ----------
+  'external-merge': {
+    title: '外部 k 路归并（败者树选段首最小）', renderer: 'string', steps: externalMergeSteps, defaultInput: '1,3,5|2,4,6|0,7',
+    parse: (text: string) => {
+      const parts = text.split('|').map(s => s.trim())
+      return { parts, segsRaw: parts, segs: parts.map(p => numSeg(p) ?? [NaN]) }
+    },
+    validate: (input: any): string | null => {
+      const ex = '1,3,5|2,4,6|0,7'
+      if (input.parts.length < 2 || input.parts.length > 4 || input.parts.some((p: string) => !p.length)) return ERR('格式：2~4 个有序段用 | 分隔（段内逗号分隔数字）', ex)
+      const { segs } = input
+      if (segs.some((s: number[]) => s.length < 1 || s.length > 8)) return ERR('每段需 1~8 个数字', ex)
+      if (segs.some((s: number[]) => s.some((v: number) => !Number.isInteger(v) || v < 0 || v > 999))) return ERR('值需为 0~999 的整数', ex)
+      for (const s of segs) {
+        for (let i = 1; i < s.length; i++) {
+          if (s[i] < s[i - 1]) return ERR('每段自身需升序（外部归并的前提：初等运行已各自排好）', ex)
+        }
+      }
+      if (segs.reduce((t: number, s: number[]) => t + s.length, 0) > 20) return ERR('总记录数需 ≤ 20（演示规模）', ex)
+      return null
     }
   }
 }
